@@ -1,3 +1,4 @@
 <Solution>
   <Project Path="SquadDemos.GHCopilot/SquadDemos.GHCopilot.csproj" />
+  <Project Path="SquadDemos.SquadHello/SquadDemos.SquadHello.csproj" />
 </Solution>

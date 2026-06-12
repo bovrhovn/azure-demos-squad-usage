@@ -3,6 +3,7 @@ using Spectre.Console;
 
 AnsiConsole.MarkupLine("[green]GitHub Copilot demo![/]");
 await using var client = new CopilotClient();
+
 await using var session = await client.CreateSessionAsync(new SessionConfig
 {
     Streaming = true,
