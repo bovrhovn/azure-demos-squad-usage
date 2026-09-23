@@ -1,5 +1,4 @@
-﻿using Microsoft.Agents.AI;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Spectre.Console;
@@ -27,7 +26,10 @@ AnsiConsole.WriteLine($"Agent name : {agent1.Name}");
 AnsiConsole.MarkupLine("[grey]Sending [/]: What is 2 + 2?");
 
 var session1 = await agent1.CreateSessionAsync();
-var result1 = await agent1.RunAsync("What is 2 + 2?", session1);
+var result1 = await agent1.RunAsync(
+    "What is 2 + 2? " +
+    "Return result and let me know who you are who did the execution.",
+    session1);
 
 if (result1 is not null)
     Console.WriteLine($"Response  : {result1.Text}");
