@@ -1,7 +1,7 @@
 # Azure Demos: Squad and GitHub Copilot SDK
 
 <p align="center">
-  Two focused .NET console demos for exploring agent interactions with the
+  Three focused .NET demos for exploring agent interactions with the
   <a href="https://www.nuget.org/packages/GitHub.Copilot.SDK">GitHub Copilot SDK</a>
   and <a href="https://www.nuget.org/packages/Squad.Agents.AI">Squad.Agents.AI</a>.
 </p>
@@ -15,18 +15,20 @@
 
 ## Overview
 
-The solution contains two independent, interactive C# console applications:
+The solution contains two console applications and an authenticated Razor web application:
 
 | Demo | What it shows |
 | --- | --- |
 | [`SquadDemos.GHCopilot`](src/SquadDemos/SquadDemos.GHCopilot) | Creating a streaming `CopilotClient` session, handling assistant-message events, and obtaining the completed response. |
 | [`SquadDemos.SquadHello`](src/SquadDemos/SquadDemos.SquadHello) | Hosting a `SquadAgent` with the .NET Generic Host, resolving it from dependency injection, and running a session against a Squad folder. |
+| [`SquadDemos.Web.CopilotDynamicModule`](src/SquadDemos/SquadDemos.Web.CopilotDynamicModule) | A Microsoft Entra ID-protected Razor Pages app with a Vue chat interface, Foundry-backed minimal APIs, and an ordered dynamic dashboard-module pipeline. |
 
 ## Prerequisites
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
 - GitHub Copilot access for the GitHub Copilot SDK demo
 - A Squad-configured folder for the Squad demo
+- A Microsoft Entra app registration and a Microsoft Foundry deployment for the web demo
 
 ## Build
 
@@ -54,6 +56,44 @@ Set `PROJECTDIR` to the root of the Squad folder to use. The demo passes that pa
 $env:PROJECTDIR = 'C:\path\to\squad-folder'
 dotnet run --project src\SquadDemos\SquadDemos.SquadHello\SquadDemos.SquadHello.csproj
 ```
+
+### Copilot Dynamic Module web app
+
+Configure `AzureAd` and `Foundry` in user secrets or environment variables before running. The app uses
+Microsoft Entra ID for browser sign-in and `DefaultAzureCredential` (managed identity, Azure CLI, or another
+supported workload credential) for Foundry. `Foundry:Deployment` must be the deployment name selected for
+your tenant; no model or credential is embedded in the sample.
+
+```powershell
+dotnet user-secrets set "AzureAd:TenantId" "<tenant-id>" --project src\SquadDemos\SquadDemos.Web.CopilotDynamicModule
+dotnet user-secrets set "AzureAd:ClientId" "<application-client-id>" --project src\SquadDemos\SquadDemos.Web.CopilotDynamicModule
+dotnet user-secrets set "Foundry:Endpoint" "https://<resource>.openai.azure.com" --project src\SquadDemos\SquadDemos.Web.CopilotDynamicModule
+dotnet user-secrets set "Foundry:Deployment" "<deployment-name>" --project src\SquadDemos\SquadDemos.Web.CopilotDynamicModule
+dotnet run --project src\SquadDemos\SquadDemos.Web.CopilotDynamicModule\SquadDemos.Web.CopilotDynamicModule.csproj
+```
+
+The chat page keeps the signed-in user's in-memory sessions and sends messages through minimal APIs to
+Foundry. The **Dashboard** link executes registered `ICopilotModule` instances in ascending `Order`; each
+module receives dashboard configuration through `SetConfiguration` and returns model-generated HTML. That HTML
+is shown in a sandboxed iframe so it cannot execute in the application origin.
+
+#### Dynamic dashboard modules
+
+The dashboard uses `CopilotModuleLoader` to discover modules from the configured
+`wwwroot\modules` folder. It caches the discovered module types in `IMemoryCache`, then creates a new module
+instance for every dashboard request so a module's mutable configuration is never shared between users.
+
+- A module assembly can contain one or more public, non-abstract implementations of
+  `SquadDemos.Web.CopilotDynamicModule.Features.Dashboard.ICopilotModule`.
+- `GET /api/dashboard/modules` runs the cached module list. `POST /api/dashboard/modules/refresh` removes the
+  cached registration list and immediately runs the newly discovered list.
+- The Dashboard **Refresh** button calls the refresh endpoint. A `FileSystemWatcher` also invalidates the cache
+  for module DLL creation, updates, renames, and deletion.
+- Configure the folder name with `Modules:FolderName`; the default is `modules`, relative to the web root.
+
+Assemblies under `wwwroot` are publicly served and execute with the application's identity when loaded. Only
+deploy reviewed assemblies through the trusted deployment pipeline. The [`wwwroot\modules`](src/SquadDemos/SquadDemos.Web.CopilotDynamicModule/wwwroot/modules)
+folder contains the deployment guidance.
 
 ## Technology references
 

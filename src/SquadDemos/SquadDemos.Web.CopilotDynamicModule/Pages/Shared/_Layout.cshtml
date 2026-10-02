@@ -1,0 +1,49 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Copilot Dynamic Module</title>
+    <script type="importmap"></script>
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/SquadDemos.Web.CopilotDynamicModule.styles.css" asp-append-version="true" />
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+    <header>
+        <nav class="site-nav" aria-label="Primary navigation">
+            <div class="site-nav-inner">
+                <a class="brand" asp-area="" asp-page="/Index">
+                    <span class="brand-mark" aria-hidden="true">+</span>
+                    <span>
+                        <small>MICROSOFT FOUNDRY</small>
+                        Copilot Dynamic Module
+                    </span>
+                </a>
+                <div class="site-links">
+                    <a asp-area="" asp-page="/Index">Chat</a>
+                    <a asp-area="" asp-page="/Dashboard">Dashboard</a>
+                    <partial name="_LoginPartial" />
+                </div>
+            </div>
+        </nav>
+        <div class="section-rule" aria-hidden="true"></div>
+    </header>
+    <div class="page-frame">
+        <main id="main-content" role="main">
+            @RenderBody()
+        </main>
+    </div>
+
+    <footer class="site-footer">
+        <div class="page-frame">
+            <span>Copilot Dynamic Module</span>
+            <span>Foundry-backed developer workspace</span>
+        </div>
+    </footer>
+
+    <script src="~/js/site.js" asp-append-version="true"></script>
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

@@ -1,0 +1,27 @@
+@page
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<div id="dashboard-app" class="dashboard-page" v-cloak>
+    <div class="dashboard-heading">
+        <div>
+            <p class="eyebrow">MODULES / RUNTIME VIEW</p>
+            <h1>Dynamic dashboard</h1>
+        </div>
+        <button type="button" @@click="loadDashboard(true)" :disabled="isLoading">
+            {{ isLoading ? 'Loading...' : 'Refresh' }}
+        </button>
+    </div>
+    <p class="dashboard-intro">A live editorial view of modules discovered from the runtime folder. Each module runs in ascending order and renders inside an isolated frame.</p>
+    <p v-if="error" class="error-message" role="alert">{{ error }}</p>
+    <section class="module-grid" aria-live="polite">
+        <iframe v-for="module in modules" :key="module.order" class="module-frame" sandbox
+                :title="`Dashboard module ${module.order}`" :srcdoc="module.html"></iframe>
+    </section>
+</div>
+
+@section Scripts {
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="~/js/dashboard.js" asp-append-version="true"></script>
+}

@@ -1,0 +1,17 @@
+﻿@using System.Security.Principal
+
+<ul class="account-links">
+@if (User.Identity?.IsAuthenticated == true)
+{
+        <li class="account-name">@User.Identity?.Name</li>
+        <li class="nav-item">
+            <a asp-area="MicrosoftIdentity" asp-controller="Account" asp-action="SignOut">Sign out</a>
+        </li>
+}
+else
+{
+        <li class="nav-item">
+            <a asp-area="MicrosoftIdentity" asp-controller="Account" asp-action="SignIn">Sign in</a>
+        </li>
+}
+</ul>

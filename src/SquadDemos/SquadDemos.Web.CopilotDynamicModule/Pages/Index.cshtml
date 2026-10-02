@@ -1,0 +1,55 @@
+﻿@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Chat";
+}
+
+<div id="chat-app" class="chat-shell" v-cloak>
+    <aside class="session-panel" aria-label="Chat sessions">
+        <div class="session-heading">
+            <div>
+                <p class="eyebrow">CONVERSATIONS</p>
+                <h1>Chats</h1>
+            </div>
+            <button type="button" class="new-chat" @@click="startNewChat">New chat</button>
+        </div>
+        <p v-if="sessions.length === 0" class="empty-state">Start a conversation to create a session.</p>
+        <button v-for="session in sessions" :key="session.id" type="button" class="session-item"
+                :class="{ active: selectedSessionId === session.id }" @@click="selectSession(session.id)">
+            <span>{{ session.title }}</span>
+            <small>{{ formatDate(session.updatedAt) }}</small>
+        </button>
+    </aside>
+    <section class="conversation-panel" aria-live="polite">
+        <header class="conversation-heading">
+            <p class="eyebrow">FOUNDRY ASSISTANT</p>
+            <h2>{{ selectedSession ? selectedSession.title : 'New conversation' }}</h2>
+            <p>Ask, explore, and build with your configured deployment.</p>
+        </header>
+        <div class="messages">
+            <p v-if="!selectedSession || selectedSession.messages.length === 0" class="empty-state">
+                Your messages and agent responses will appear here.
+            </p>
+            <article v-for="message in selectedSession?.messages ?? []" :key="message.id" class="message"
+                     :class="message.role === 'assistant' ? 'assistant-message' : 'user-message'">
+                <div class="avatar" aria-hidden="true">{{ message.role === 'assistant' ? 'AI' : 'You' }}</div>
+                <div class="message-content">
+                    <strong>{{ message.role === 'assistant' ? 'Agent' : 'You' }}</strong>
+                    <p>{{ message.content }}</p>
+                </div>
+            </article>
+        </div>
+        <form class="composer" @@submit.prevent="sendMessage">
+            <label class="visually-hidden" for="message">Message</label>
+            <textarea id="message" v-model.trim="message" rows="3" placeholder="Ask anything..."
+                      :disabled="isSending"></textarea>
+            <button type="submit" :disabled="isSending || !message">{{ isSending ? 'Sending...' : 'Send' }}</button>
+        </form>
+        <p v-if="error" class="error-message" role="alert">{{ error }}</p>
+    </section>
+</div>
+
+@section Scripts {
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="~/js/chat.js" asp-append-version="true"></script>
+}
