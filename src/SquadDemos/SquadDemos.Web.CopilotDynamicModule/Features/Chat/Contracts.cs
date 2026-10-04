@@ -8,9 +8,12 @@ public sealed record ChatSessionSummary(Guid Id, string Title, DateTimeOffset Up
 
 public sealed record SendChatMessageRequest(Guid? SessionId, string Message);
 
-public interface IFoundryChatClient
+public interface ICopilotChatClient
 {
-    Task<string> GetResponseAsync(IReadOnlyList<ChatMessage> messages, CancellationToken cancellationToken);
+    Task<string> GetResponseAsync(
+        IReadOnlyList<ChatMessage> messages,
+        string? model,
+        CancellationToken cancellationToken);
 }
 
 public interface IChatService
@@ -19,5 +22,9 @@ public interface IChatService
 
     ChatSession? GetSession(string userId, Guid sessionId);
 
-    Task<ChatSession> SendMessageAsync(string userId, SendChatMessageRequest request, CancellationToken cancellationToken);
+    Task<ChatSession> SendMessageAsync(
+        string userId,
+        SendChatMessageRequest request,
+        string? model,
+        CancellationToken cancellationToken);
 }

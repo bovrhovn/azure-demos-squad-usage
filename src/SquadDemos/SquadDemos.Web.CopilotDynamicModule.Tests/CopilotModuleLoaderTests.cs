@@ -5,6 +5,7 @@ using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using SquadDemos.Web.CopilotDynamicModule.Features.Chat;
+using SquadDemos.Web.CopilotDynamicModule.Features.Copilot;
 using SquadDemos.Web.CopilotDynamicModule.Features.Dashboard;
 
 namespace SquadDemos.Web.CopilotDynamicModule.Tests;
@@ -22,7 +23,7 @@ public sealed class CopilotModuleLoaderTests : IDisposable
         File.Copy(typeof(DiskModule).Assembly.Location, assemblyPath);
 
         using var serviceProvider = new ServiceCollection()
-            .AddSingleton<IFoundryChatClient>(new FakeFoundryChatClient())
+            .AddSingleton<ICopilotService>(new FakeCopilotService())
             .BuildServiceProvider();
         using var cache = new MemoryCache(new MemoryCacheOptions());
         using var loader = new CopilotModuleLoader(
@@ -55,10 +56,19 @@ public sealed class CopilotModuleLoaderTests : IDisposable
         }
     }
 
-    private sealed class FakeFoundryChatClient : IFoundryChatClient
+    private sealed class FakeCopilotService : ICopilotService
     {
-        public Task<string> GetResponseAsync(IReadOnlyList<ChatMessage> messages, CancellationToken cancellationToken) =>
-            Task.FromResult("<section>Foundry module</section>");
+        public Task<CopilotAuthenticationStatus> GetAuthenticationStatusAsync(CancellationToken cancellationToken) =>
+            Task.FromResult(new CopilotAuthenticationStatus(true, "octocat", "https://github.com/login/device", "/images/default-avatar.svg"));
+
+        public Task<IReadOnlyList<CopilotModel>> GetModelsAsync(CancellationToken cancellationToken) =>
+            Task.FromResult<IReadOnlyList<CopilotModel>>([]);
+
+        public Task<string> GetResponseAsync(
+            IReadOnlyList<ChatMessage> messages,
+            string? model,
+            CancellationToken cancellationToken) =>
+            Task.FromResult("<section>Copilot module</section>");
     }
 
     private sealed class TestWebHostEnvironment(string webRootPath) : IWebHostEnvironment

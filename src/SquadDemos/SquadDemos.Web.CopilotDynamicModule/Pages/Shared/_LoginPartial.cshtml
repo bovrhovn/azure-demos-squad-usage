@@ -1,17 +1,20 @@
-﻿@using System.Security.Principal
+﻿@model SquadDemos.Web.CopilotDynamicModule.Features.Copilot.CopilotAuthenticationStatus
 
 <ul class="account-links">
-@if (User.Identity?.IsAuthenticated == true)
+@if (Model.IsAuthenticated)
 {
-        <li class="account-name">@User.Identity?.Name</li>
-        <li class="nav-item">
-            <a asp-area="MicrosoftIdentity" asp-controller="Account" asp-action="SignOut">Sign out</a>
-        </li>
+    <li>
+        <img class="account-avatar" src="@Model.AvatarUrl" alt="@Model.Login's GitHub avatar" width="32" height="32" />
+    </li>
+    <li class="account-name">@Model.Login</li>
 }
 else
 {
-        <li class="nav-item">
-            <a asp-area="MicrosoftIdentity" asp-controller="Account" asp-action="SignIn">Sign in</a>
-        </li>
+    <li>
+        <img class="account-avatar" src="@Model.AvatarUrl" alt="Default avatar" width="32" height="32" />
+    </li>
+    <li class="nav-item">
+        <a href="@Model.AuthenticationUrl" target="_blank" rel="noreferrer">Authenticate with GitHub</a>
+    </li>
 }
 </ul>

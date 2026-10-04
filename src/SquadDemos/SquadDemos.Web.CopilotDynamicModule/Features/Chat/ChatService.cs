@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 
 namespace SquadDemos.Web.CopilotDynamicModule.Features.Chat;
 
-public sealed class ChatService(IFoundryChatClient foundryChatClient) : IChatService
+public sealed class ChatService(ICopilotChatClient copilotChatClient) : IChatService
 {
     private readonly ConcurrentDictionary<string, List<ChatSession>> sessionsByUser = new();
 
@@ -18,6 +18,7 @@ public sealed class ChatService(IFoundryChatClient foundryChatClient) : IChatSer
     public async Task<ChatSession> SendMessageAsync(
         string userId,
         SendChatMessageRequest request,
+        string? model,
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.Message))
@@ -49,7 +50,7 @@ public sealed class ChatService(IFoundryChatClient foundryChatClient) : IChatSer
             ReplaceSession(sessions, session);
         }
 
-        var response = await foundryChatClient.GetResponseAsync(session.Messages, cancellationToken);
+        var response = await copilotChatClient.GetResponseAsync(session.Messages, model, cancellationToken);
 
         lock (sessions)
         {

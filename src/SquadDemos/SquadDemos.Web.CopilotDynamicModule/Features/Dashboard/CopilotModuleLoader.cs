@@ -92,7 +92,7 @@ public sealed class CopilotModuleLoader : ICopilotModuleLoader, IDisposable
 
     private CachedModuleTypes DiscoverModuleTypes()
     {
-        var moduleTypes = new List<Type> { typeof(FoundryDashboardModule) };
+        var moduleTypes = new List<Type> { typeof(CopilotDashboardModule) };
         var loadContexts = new List<ModuleLoadContext>();
 
         foreach (var assemblyPath in Directory.EnumerateFiles(ModuleFolderPath, "*.dll", SearchOption.TopDirectoryOnly))

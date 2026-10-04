@@ -1,8 +1,5 @@
-using System.Security.Claims;
-using Azure.Core;
-using Azure.Identity;
 using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.Extensions.Options;
+using SquadDemos.Web.CopilotDynamicModule.Features.Copilot;
 
 namespace SquadDemos.Web.CopilotDynamicModule.Features.Chat;
 
@@ -10,15 +7,6 @@ public static class ChatFeature
 {
     public static IServiceCollection AddChatFeature(this IServiceCollection services, IConfiguration configuration)
     {
-        services.AddOptions<FoundryOptions>()
-            .Bind(configuration.GetSection(FoundryOptions.SectionName))
-            .ValidateOnStart();
-        services.AddSingleton<TokenCredential, DefaultAzureCredential>();
-        services.AddHttpClient<IFoundryChatClient, FoundryChatClient>((provider, client) =>
-        {
-            var options = provider.GetRequiredService<IOptions<FoundryOptions>>().Value;
-            client.Timeout = TimeSpan.FromSeconds(options.RequestTimeoutSeconds);
-        });
         services.AddSingleton<IChatService, ChatService>();
         return services;
     }
@@ -26,25 +14,39 @@ public static class ChatFeature
     public static RouteGroupBuilder MapChatFeatureApi(this IEndpointRouteBuilder endpoints)
     {
         var group = endpoints.MapGroup("/api/chat")
-            .RequireAuthorization()
             .WithTags("Chat");
 
-        group.MapGet("/sessions", (ClaimsPrincipal user, IChatService chatService) =>
-            TypedResults.Ok(chatService.GetSessions(GetUserId(user)))
-        ).WithName("GetChatSessions").WithSummary("Gets the signed-in user's chat sessions.");
-
-        group.MapGet("/sessions/{sessionId:guid}", Results<Ok<ChatSession>, NotFound> (
-            Guid sessionId,
-            ClaimsPrincipal user,
-            IChatService chatService) =>
+        group.MapGet("/sessions", async Task<Results<Ok<IReadOnlyList<ChatSessionSummary>>, ProblemHttpResult>> (
+            ICopilotService copilot,
+            IChatService chatService,
+            CancellationToken cancellationToken) =>
         {
-            var session = chatService.GetSession(GetUserId(user), sessionId);
+            var status = await copilot.GetAuthenticationStatusAsync(cancellationToken);
+            return status.IsAuthenticated
+                ? TypedResults.Ok(chatService.GetSessions(status.Login!))
+                : TypedResults.Problem("Authenticate with GitHub to use Copilot.", statusCode: StatusCodes.Status401Unauthorized);
+        }).WithName("GetChatSessions").WithSummary("Gets the authenticated GitHub user's chat sessions.");
+
+        group.MapGet("/sessions/{sessionId:guid}", async Task<Results<Ok<ChatSession>, NotFound, ProblemHttpResult>> (
+            Guid sessionId,
+            ICopilotService copilot,
+            IChatService chatService,
+            CancellationToken cancellationToken) =>
+        {
+            var status = await copilot.GetAuthenticationStatusAsync(cancellationToken);
+            if (!status.IsAuthenticated)
+            {
+                return TypedResults.Problem("Authenticate with GitHub to use Copilot.", statusCode: StatusCodes.Status401Unauthorized);
+            }
+
+            var session = chatService.GetSession(status.Login!, sessionId);
             return session is null ? TypedResults.NotFound() : TypedResults.Ok(session);
         }).WithName("GetChatSession").WithSummary("Gets one chat session.");
 
         group.MapPost("/messages", async Task<Results<Ok<ChatSession>, ValidationProblem, NotFound, ProblemHttpResult>> (
             SendChatMessageRequest request,
-            ClaimsPrincipal user,
+            HttpRequest httpRequest,
+            ICopilotService copilot,
             IChatService chatService,
             CancellationToken cancellationToken) =>
         {
@@ -56,9 +58,19 @@ public static class ChatFeature
                 });
             }
 
+            var status = await copilot.GetAuthenticationStatusAsync(cancellationToken);
+            if (!status.IsAuthenticated)
+            {
+                return TypedResults.Problem("Authenticate with GitHub to use Copilot.", statusCode: StatusCodes.Status401Unauthorized);
+            }
+
             try
             {
-                return TypedResults.Ok(await chatService.SendMessageAsync(GetUserId(user), request, cancellationToken));
+                return TypedResults.Ok(await chatService.SendMessageAsync(
+                    status.Login!,
+                    request,
+                    httpRequest.Cookies[CopilotOptions.ModelCookieName],
+                    cancellationToken));
             }
             catch (KeyNotFoundException)
             {
@@ -68,19 +80,14 @@ public static class ChatFeature
             {
                 return TypedResults.Problem(exception.Message, statusCode: StatusCodes.Status503ServiceUnavailable);
             }
-            catch (FoundryRequestException)
+            catch (CopilotRequestException)
             {
                 return TypedResults.Problem(
-                    "The Foundry service could not complete the request.",
+                    "GitHub Copilot could not complete the request.",
                     statusCode: StatusCodes.Status502BadGateway);
             }
-        }).WithName("SendChatMessage").WithSummary("Sends a user message to Microsoft Foundry.");
+        }).WithName("SendChatMessage").WithSummary("Sends a user message to GitHub Copilot.");
 
         return group;
     }
-
-    private static string GetUserId(ClaimsPrincipal user) =>
-        user.FindFirstValue("oid")
-        ?? user.Identity?.Name
-        ?? throw new InvalidOperationException("The signed-in user does not have an identifier.");
 }

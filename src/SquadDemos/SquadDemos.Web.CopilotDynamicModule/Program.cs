@@ -1,22 +1,11 @@
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.OpenIdConnect;
-using Microsoft.Identity.Web;
-using Microsoft.Identity.Web.UI;
 using SquadDemos.Web.CopilotDynamicModule.Features.Chat;
+using SquadDemos.Web.CopilotDynamicModule.Features.Copilot;
 using SquadDemos.Web.CopilotDynamicModule.Features.Dashboard;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
-    .AddMicrosoftIdentityWebApp(builder.Configuration.GetSection("AzureAd"));
-
-builder.Services.AddAuthorization(options =>
-{
-    options.FallbackPolicy = options.DefaultPolicy;
-});
-
-builder.Services.AddRazorPages()
-    .AddMicrosoftIdentityUI();
+builder.Services.AddRazorPages();
+builder.Services.AddCopilotFeature(builder.Configuration);
 builder.Services.AddChatFeature(builder.Configuration);
 builder.Services.AddDashboardFeature(builder.Configuration);
 
@@ -30,9 +19,6 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseRouting();
-app.UseAuthentication();
-app.UseAuthorization();
-
 app.MapStaticAssets();
 app.MapRazorPages()
    .WithStaticAssets();

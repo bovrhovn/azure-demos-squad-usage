@@ -9,18 +9,19 @@ public sealed class ChatAndModuleTests
     [Fact]
     public async Task SendMessageAsync_creates_a_session_and_keeps_conversation_history()
     {
-        var service = new ChatService(new FakeFoundryChatClient("Hello from Foundry."));
+        var service = new ChatService(new FakeCopilotChatClient("Hello from Copilot."));
 
         var session = await service.SendMessageAsync(
             "user-1",
             new SendChatMessageRequest(null, "Explain modules."),
+            null,
             CancellationToken.None);
 
         Assert.Equal("Explain modules.", session.Title);
         Assert.Collection(
             session.Messages,
             message => Assert.Equal(("user", "Explain modules."), (message.Role, message.Content)),
-            message => Assert.Equal(("assistant", "Hello from Foundry."), (message.Role, message.Content)));
+            message => Assert.Equal(("assistant", "Hello from Copilot."), (message.Role, message.Content)));
         Assert.Equal(session.Id, Assert.Single(service.GetSessions("user-1")).Id);
     }
 
@@ -44,9 +45,12 @@ public sealed class ChatAndModuleTests
             module => Assert.Equal((20, "<section>second-dashboard</section>"), (module.Order, module.Html)));
     }
 
-    private sealed class FakeFoundryChatClient(string response) : IFoundryChatClient
+    private sealed class FakeCopilotChatClient(string response) : ICopilotChatClient
     {
-        public Task<string> GetResponseAsync(IReadOnlyList<ChatMessage> messages, CancellationToken cancellationToken) =>
+        public Task<string> GetResponseAsync(
+            IReadOnlyList<ChatMessage> messages,
+            string? model,
+            CancellationToken cancellationToken) =>
             Task.FromResult(response);
     }
 

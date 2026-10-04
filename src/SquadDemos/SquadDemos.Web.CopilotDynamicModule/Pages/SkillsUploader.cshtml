@@ -1,0 +1,32 @@
+@page
+@model SquadDemos.Web.CopilotDynamicModule.Pages.SkillsUploaderModel
+@{
+    ViewData["Title"] = "Skills uploader";
+}
+
+<section class="settings-panel">
+    <p class="eyebrow">GITHUB COPILOT</p>
+    <h1>Skills uploader</h1>
+    <p>Upload a Markdown skill. It is stored as <code>wwwroot/skills/&lt;name&gt;/SKILL.md</code> and discovered by each Copilot SDK session.</p>
+    <form method="post" enctype="multipart/form-data">
+        <label asp-for="SkillFile">Skill Markdown file</label>
+        <input asp-for="SkillFile" accept=".md,text/markdown" />
+        <span asp-validation-for="SkillFile" class="error-message"></span>
+        <button type="submit">Upload skill</button>
+    </form>
+    @if (!string.IsNullOrWhiteSpace(Model.StatusMessage))
+    {
+        <p class="success-message" role="status">@Model.StatusMessage</p>
+    }
+    <h2>Available skills</h2>
+    <ul>
+    @foreach (var skill in Model.Skills)
+    {
+        <li>@skill.Name</li>
+    }
+    </ul>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

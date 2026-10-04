@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Options;
 using SquadDemos.Web.CopilotDynamicModule.Features.Chat;
+using SquadDemos.Web.CopilotDynamicModule.Features.Copilot;
 
 namespace SquadDemos.Web.CopilotDynamicModule.Features.Dashboard;
 
@@ -40,7 +41,7 @@ public sealed class CopilotModuleRunner(
     }
 }
 
-public sealed class FoundryDashboardModule(IFoundryChatClient chatClient) : ICopilotModule
+public sealed class CopilotDashboardModule(ICopilotService copilot) : ICopilotModule
 {
     private readonly Dictionary<string, string> configuration = [];
 
@@ -54,7 +55,7 @@ public sealed class FoundryDashboardModule(IFoundryChatClient chatClient) : ICop
         var prompt = configuration.GetValueOrDefault("dashboardPrompt")
             ?? throw new InvalidOperationException("Dashboard:Configuration:dashboardPrompt must be configured.");
         var message = new ChatMessage(Guid.NewGuid(), "user", prompt, DateTimeOffset.UtcNow);
-        return chatClient.GetResponseAsync([message], cancellationToken);
+        return copilot.GetResponseAsync([message], null, cancellationToken);
     }
 }
 
@@ -77,7 +78,6 @@ public static class DashboardFeature
     public static void MapDashboardFeatureApi(this IEndpointRouteBuilder endpoints)
     {
         endpoints.MapGroup("/api/dashboard")
-            .RequireAuthorization()
             .WithTags("Dashboard")
             .MapGet("/modules", async Task<IResult> (CopilotModuleRunner runner, CancellationToken cancellationToken) =>
             {
@@ -89,10 +89,10 @@ public static class DashboardFeature
                 {
                     return TypedResults.Problem(exception.Message, statusCode: StatusCodes.Status503ServiceUnavailable);
                 }
-                catch (FoundryRequestException)
+                catch (CopilotRequestException)
                 {
                     return TypedResults.Problem(
-                        "The Foundry service could not generate dashboard content.",
+                        "GitHub Copilot could not generate dashboard content.",
                         statusCode: StatusCodes.Status502BadGateway);
                 }
             })
@@ -107,7 +107,6 @@ public static class DashboardFeature
             moduleLoader.Refresh();
             return runner.RunAsync(cancellationToken);
         })
-        .RequireAuthorization()
         .WithTags("Dashboard")
         .WithName("RefreshDashboardModules")
         .WithSummary("Invalidates the module cache and runs the refreshed dashboard module list.");

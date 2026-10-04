@@ -1,4 +1,9 @@
-﻿<!DOCTYPE html>
+﻿@using SquadDemos.Web.CopilotDynamicModule.Features.Copilot
+@inject ICopilotService Copilot
+@{
+    var copilotStatus = await Copilot.GetAuthenticationStatusAsync(Context.RequestAborted);
+}
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
@@ -23,7 +28,12 @@
                 <div class="site-links">
                     <a asp-area="" asp-page="/Index">Chat</a>
                     <a asp-area="" asp-page="/Dashboard">Dashboard</a>
-                    <partial name="_LoginPartial" />
+                    <a asp-area="" asp-page="/SkillsUploader">Skills</a>
+                    @if (copilotStatus.IsAuthenticated)
+                    {
+                        <a asp-area="" asp-page="/ModelSelector">Model</a>
+                    }
+                    <partial name="_LoginPartial" model="copilotStatus" />
                 </div>
             </div>
         </nav>
@@ -38,7 +48,7 @@
     <footer class="site-footer">
         <div class="page-frame">
             <span>Copilot Dynamic Module</span>
-            <span>Foundry-backed developer workspace</span>
+            <span>GitHub Copilot-backed developer workspace</span>
         </div>
     </footer>
 

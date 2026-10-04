@@ -119,6 +119,49 @@ button, textarea { font: inherit; }
     list-style: none;
 }
 
+.account-avatar {
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    display: block;
+}
+
+.settings-panel {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    margin: 3rem auto;
+    max-width: 44rem;
+    padding: 2.5rem;
+}
+
+.settings-panel form {
+    display: grid;
+    gap: .75rem;
+    margin-block: 1.5rem;
+}
+
+.settings-panel input,
+.settings-panel select {
+    border: 1px solid var(--line-dark);
+    font: inherit;
+    padding: .65rem .75rem;
+}
+
+.settings-panel button,
+.button-link {
+    background: var(--ink);
+    border: 0;
+    color: var(--paper);
+    display: inline-block;
+    font: inherit;
+    padding: .7rem 1rem;
+    text-decoration: none;
+    width: fit-content;
+}
+
+.success-message {
+    color: #166534;
+}
+
 .account-name {
     max-width: 11rem;
     overflow: hidden;
