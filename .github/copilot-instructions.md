@@ -24,7 +24,7 @@
   $env:PROJECTDIR = 'C:\path\to\squad-folder'
   dotnet run --project src\SquadDemos\SquadDemos.SquadHello\SquadDemos.SquadHello.csproj
   ```
-- Run the web demo after configuring its `AzureAd` and `Foundry` settings through user secrets or environment variables:
+- Run the web demo and complete the GitHub device-authentication flow when prompted:
   ```powershell
   dotnet run --project src\SquadDemos\SquadDemos.Web.CopilotDynamicModule\SquadDemos.Web.CopilotDynamicModule.csproj
   ```
@@ -47,7 +47,7 @@ The solution at `src\SquadDemos\SquadDemos.slnx` contains three independent .NET
 - Treat `PROJECTDIR` as required input for the Squad demo. Fail immediately when it is absent rather than introducing a fallback location.
 - Preserve the current Copilot session lifecycle: configure event handlers for streamed messages, retain the disposable subscription, and dispose it after `SendAndWaitAsync`.
 - Keep web feature registration and endpoint mapping together in the corresponding `Add*Feature` and `Map*FeatureApi` extension methods. Add feature-facing contracts next to their feature service.
-- Validate configuration when registering web feature options with `ValidateOnStart`; do not embed credentials, model choices, deployment names, or tenant values in source. The web demo expects values from configuration, user secrets, or environment variables.
+- Validate configuration when registering web feature options with `ValidateOnStart`; do not embed credentials or model choices in source. The web demo expects values from configuration, user secrets, or environment variables.
 - Preserve the Copilot error boundary: translate `CopilotRequestException` to the API's existing 502 response and configuration/empty-response `InvalidOperationException` to 503 rather than swallowing failures.
 - For dashboard plugins, cache module *types* rather than module instances. Plugin instances can retain per-request configuration and must not be shared across users; keep the collectible load-context cleanup coupled to cache eviction.
 - Retain the path-containment checks in `SkillStore` and `CopilotModuleLoader`: configured skills and modules folders must resolve underneath `wwwroot`.

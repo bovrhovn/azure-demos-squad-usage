@@ -21,14 +21,14 @@ The solution contains two console applications and an authenticated Razor web ap
 | --- | --- |
 | [`SquadDemos.GHCopilot`](src/SquadDemos/SquadDemos.GHCopilot) | Creating a streaming `CopilotClient` session, handling assistant-message events, and obtaining the completed response. |
 | [`SquadDemos.SquadHello`](src/SquadDemos/SquadDemos.SquadHello) | Hosting a `SquadAgent` with the .NET Generic Host, resolving it from dependency injection, and running a session against a Squad folder. |
-| [`SquadDemos.Web.CopilotDynamicModule`](src/SquadDemos/SquadDemos.Web.CopilotDynamicModule) | A Microsoft Entra ID-protected Razor Pages app with a Vue chat interface, Foundry-backed minimal APIs, and an ordered dynamic dashboard-module pipeline. |
+| [`SquadDemos.Web.CopilotDynamicModule`](src/SquadDemos/SquadDemos.Web.CopilotDynamicModule) | A GitHub-authenticated Razor Pages app with a Vue chat interface and an ordered dynamic dashboard-module pipeline. |
 
 ## Prerequisites
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
 - GitHub Copilot access for the GitHub Copilot SDK demo
 - A Squad-configured folder for the Squad demo
-- A Microsoft Entra app registration and a Microsoft Foundry deployment for the web demo
+- GitHub Copilot access for the web demo
 
 ## Build
 
@@ -71,21 +71,16 @@ dotnet run --project src\SquadDemos\SquadDemos.SquadHello\SquadDemos.SquadHello.
 
 ### Copilot Dynamic Module web app
 
-Configure `AzureAd` and `Foundry` in user secrets or environment variables before running. The app uses
-Microsoft Entra ID for browser sign-in and `DefaultAzureCredential` (managed identity, Azure CLI, or another
-supported workload credential) for Foundry. `Foundry:Deployment` must be the deployment name selected for
-your tenant; no model or credential is embedded in the sample.
+The web app uses the GitHub Copilot SDK's GitHub authentication. On first visit, it redirects to the
+**Authenticate with GitHub** page, which opens GitHub's device sign-in flow. Complete that flow and return to
+the page to continue to chat. No Entra ID app registration or Foundry configuration is required.
 
 ```powershell
-dotnet user-secrets set "AzureAd:TenantId" "<tenant-id>" --project src\SquadDemos\SquadDemos.Web.CopilotDynamicModule
-dotnet user-secrets set "AzureAd:ClientId" "<application-client-id>" --project src\SquadDemos\SquadDemos.Web.CopilotDynamicModule
-dotnet user-secrets set "Foundry:Endpoint" "https://<resource>.openai.azure.com" --project src\SquadDemos\SquadDemos.Web.CopilotDynamicModule
-dotnet user-secrets set "Foundry:Deployment" "<deployment-name>" --project src\SquadDemos\SquadDemos.Web.CopilotDynamicModule
 dotnet run --project src\SquadDemos\SquadDemos.Web.CopilotDynamicModule\SquadDemos.Web.CopilotDynamicModule.csproj
 ```
 
 The chat page keeps the signed-in user's in-memory sessions and sends messages through minimal APIs to
-Foundry. The **Dashboard** link executes registered `ICopilotModule` instances in ascending `Order`; each
+GitHub Copilot. The **Dashboard** link executes registered `ICopilotModule` instances in ascending `Order`; each
 module receives dashboard configuration through `SetConfiguration` and returns model-generated HTML. That HTML
 is shown in a sandboxed iframe so it cannot execute in the application origin.
 
@@ -99,8 +94,9 @@ instance for every dashboard request so a module's mutable configuration is neve
   `SquadDemos.Web.CopilotDynamicModule.Features.Dashboard.ICopilotModule`.
 - `GET /api/dashboard/modules` runs the cached module list. `POST /api/dashboard/modules/refresh` removes the
   cached registration list and immediately runs the newly discovered list.
-- The Dashboard **Refresh** button calls the refresh endpoint. A `FileSystemWatcher` also invalidates the cache
-  for module DLL creation, updates, renames, and deletion.
+- The Dashboard **Refresh** button calls the refresh endpoint. Its module management panel lists deployed DLLs
+  and uses a confirmation dialog before deleting one. Deletion invalidates the cache and refreshes the view.
+  A `FileSystemWatcher` also invalidates the cache for module DLL creation, updates, renames, and deletion.
 - Configure the folder name with `Modules:FolderName`; the default is `modules`, relative to the web root.
 
 Assemblies under `wwwroot` are publicly served and execute with the application's identity when loaded. Only

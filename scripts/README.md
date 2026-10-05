@@ -24,8 +24,8 @@ Use `-NoBuild` after building the solution when you only need to launch an exist
 ```
 
 The Squad launcher validates `ProjectDir`, supplies its resolved path as `PROJECTDIR` only while the
-application runs, and then restores the previous environment value. Configure the web application's
-`AzureAd` and `Foundry` settings before starting it.
+application runs, and then restores the previous environment value. The web application redirects unauthenticated
+visitors to its GitHub device-authentication page when it starts.
 
 ## Tests
 

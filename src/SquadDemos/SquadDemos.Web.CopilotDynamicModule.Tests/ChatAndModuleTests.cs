@@ -81,6 +81,10 @@ public sealed class ChatAndModuleTests
     {
         public IReadOnlyList<ICopilotModule> GetModules() => modules;
 
+        public IReadOnlyList<string> GetModuleFiles() => [];
+
+        public bool DeleteModule(string moduleFileName) => false;
+
         public void Refresh()
         {
         }

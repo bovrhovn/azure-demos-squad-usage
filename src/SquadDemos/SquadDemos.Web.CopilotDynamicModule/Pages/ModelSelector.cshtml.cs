@@ -17,8 +17,6 @@ public sealed class ModelSelectorModel(
 
     public bool IsAuthenticated { get; private set; }
 
-    public string AuthenticationUrl { get; private set; } = string.Empty;
-
     public IReadOnlyList<SelectListItem> Models { get; private set; } = [];
 
     public string? StatusMessage { get; private set; }
@@ -33,7 +31,7 @@ public sealed class ModelSelectorModel(
         await PopulateAsync(cancellationToken);
         if (!IsAuthenticated)
         {
-            return Page();
+            return RedirectToPage("/Authenticate");
         }
 
         if (!string.IsNullOrEmpty(SelectedModel) && Models.All(model => model.Value != SelectedModel))
@@ -61,7 +59,6 @@ public sealed class ModelSelectorModel(
     {
         var status = await copilot.GetAuthenticationStatusAsync(cancellationToken);
         IsAuthenticated = status.IsAuthenticated;
-        AuthenticationUrl = status.AuthenticationUrl;
         SelectedModel ??= Request.Cookies[CopilotOptions.ModelCookieName] ?? options.DefaultModel;
         if (IsAuthenticated)
         {

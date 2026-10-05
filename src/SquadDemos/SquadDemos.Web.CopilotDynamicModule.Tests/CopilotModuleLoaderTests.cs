@@ -41,6 +41,52 @@ public sealed class CopilotModuleLoaderTests : IDisposable
         Assert.DoesNotContain(loader.GetModules(), module => module.GetType().FullName == typeof(DiskModule).FullName);
     }
 
+    [Fact]
+    public void DeleteModule_deletes_the_module_file_and_refreshes_the_cache()
+    {
+        var modulesPath = Path.Combine(webRootPath, "modules");
+        Directory.CreateDirectory(modulesPath);
+        var assemblyPath = Path.Combine(modulesPath, "TestModule.dll");
+        File.Copy(typeof(DiskModule).Assembly.Location, assemblyPath);
+
+        using var serviceProvider = new ServiceCollection()
+            .AddSingleton<ICopilotService>(new FakeCopilotService())
+            .BuildServiceProvider();
+        using var cache = new MemoryCache(new MemoryCacheOptions());
+        using var loader = new CopilotModuleLoader(
+            new TestWebHostEnvironment(webRootPath),
+            cache,
+            serviceProvider,
+            Options.Create(new ModuleLoaderOptions { FolderName = "modules" }),
+            NullLogger<CopilotModuleLoader>.Instance);
+
+        Assert.Contains("TestModule.dll", loader.GetModuleFiles());
+        Assert.Contains(loader.GetModules(), module => module.GetType().FullName == typeof(DiskModule).FullName);
+
+        Assert.True(loader.DeleteModule("TestModule.dll"));
+
+        Assert.Empty(loader.GetModuleFiles());
+        Assert.DoesNotContain(loader.GetModules(), module => module.GetType().FullName == typeof(DiskModule).FullName);
+    }
+
+    [Fact]
+    public void DeleteModule_rejects_paths_outside_the_module_folder()
+    {
+        Directory.CreateDirectory(webRootPath);
+        using var serviceProvider = new ServiceCollection()
+            .AddSingleton<ICopilotService>(new FakeCopilotService())
+            .BuildServiceProvider();
+        using var cache = new MemoryCache(new MemoryCacheOptions());
+        using var loader = new CopilotModuleLoader(
+            new TestWebHostEnvironment(webRootPath),
+            cache,
+            serviceProvider,
+            Options.Create(new ModuleLoaderOptions { FolderName = "modules" }),
+            NullLogger<CopilotModuleLoader>.Instance);
+
+        Assert.False(loader.DeleteModule(@"..\outside.dll"));
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(webRootPath))

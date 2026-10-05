@@ -19,6 +19,31 @@
         <iframe v-for="module in modules" :key="module.order" class="module-frame" sandbox
                 :title="`Dashboard module ${module.order}`" :srcdoc="module.html"></iframe>
     </section>
+    <section class="module-management" aria-labelledby="module-management-heading">
+        <div>
+            <p class="eyebrow">MODULE MANAGEMENT</p>
+            <h2 id="module-management-heading">Deployed modules</h2>
+        </div>
+        <p v-if="moduleFiles.length === 0" class="empty-state">No uploaded module assemblies are available.</p>
+        <ul v-else class="module-file-list">
+            <li v-for="moduleFile in moduleFiles" :key="moduleFile">
+                <span>{{ moduleFile }}</span>
+                <button type="button" class="delete-module" @@click="openDeleteDialog(moduleFile)">Delete</button>
+            </li>
+        </ul>
+    </section>
+    <dialog ref="deleteDialog" class="delete-dialog" @@close="modulePendingDeletion = ''">
+        <form method="dialog">
+            <h2>Delete module?</h2>
+            <p>Delete <strong>{{ modulePendingDeletion }}</strong> from the deployed module folder? This cannot be undone.</p>
+            <div class="dialog-actions">
+                <button value="cancel">Cancel</button>
+                <button class="delete-module" value="confirm" @@click.prevent="deleteModule" :disabled="isDeleting">
+                    {{ isDeleting ? 'Deleting...' : 'Delete module' }}
+                </button>
+            </div>
+        </form>
+    </dialog>
 </div>
 
 @section Scripts {

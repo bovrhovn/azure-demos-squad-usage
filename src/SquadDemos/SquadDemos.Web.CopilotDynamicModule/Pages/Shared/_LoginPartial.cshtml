@@ -10,11 +10,8 @@
 }
 else
 {
-    <li>
-        <img class="account-avatar" src="@Model.AvatarUrl" alt="Default avatar" width="32" height="32" />
-    </li>
     <li class="nav-item">
-        <a href="@Model.AuthenticationUrl" target="_blank" rel="noreferrer">Authenticate with GitHub</a>
+        <a asp-page="/Authenticate">Authenticate with GitHub</a>
     </li>
 }
 </ul>

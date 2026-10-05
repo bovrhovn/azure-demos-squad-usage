@@ -110,5 +110,24 @@ public static class DashboardFeature
         .WithTags("Dashboard")
         .WithName("RefreshDashboardModules")
         .WithSummary("Invalidates the module cache and runs the refreshed dashboard module list.");
+
+        endpoints.MapGet("/api/dashboard/module-files", (ICopilotModuleLoader moduleLoader) =>
+            TypedResults.Ok(moduleLoader.GetModuleFiles()))
+            .WithTags("Dashboard")
+            .WithName("GetDashboardModuleFiles")
+            .WithSummary("Lists module assemblies that can be deleted from the dashboard.");
+
+        endpoints.MapDelete("/api/dashboard/module-files/{moduleFileName}", (
+            string moduleFileName,
+            ICopilotModuleLoader moduleLoader) =>
+        {
+            IResult result = moduleLoader.DeleteModule(moduleFileName)
+                ? TypedResults.NoContent()
+                : TypedResults.NotFound();
+            return result;
+        })
+            .WithTags("Dashboard")
+            .WithName("DeleteDashboardModuleFile")
+            .WithSummary("Deletes one module assembly and invalidates the module cache.");
     }
 }

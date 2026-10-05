@@ -162,6 +162,15 @@ button, textarea { font: inherit; }
     color: #166534;
 }
 
+.authentication-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .75rem;
+    margin-top: 1.5rem;
+}
+
+.secondary-button { background: var(--blue-dark); }
+
 .account-name {
     max-width: 11rem;
     overflow: hidden;
@@ -481,6 +490,55 @@ button, textarea { font: inherit; }
     box-shadow: 0 .65rem 1.35rem rgba(10, 44, 77, .07);
 }
 
+.module-management {
+    margin-top: 2.5rem;
+    padding: 1.5rem;
+    border: 1px solid var(--line);
+    background: var(--paper);
+}
+
+.module-management h2, .delete-dialog h2 { margin: 0; color: var(--navy); }
+
+.module-file-list {
+    display: grid;
+    gap: .65rem;
+    margin: 1.25rem 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.module-file-list li, .dialog-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.module-file-list li { padding: .7rem .8rem; background: #fff; border: 1px solid var(--line); }
+
+.delete-module {
+    border: 1px solid var(--error);
+    background: #fff;
+    color: var(--error);
+    cursor: pointer;
+    font: inherit;
+    font-weight: 700;
+    padding: .45rem .7rem;
+}
+
+.delete-module:hover, .delete-module:focus-visible { background: #fff0ef; }
+
+.delete-dialog {
+    width: min(calc(100% - 2rem), 32rem);
+    border: 1px solid var(--line);
+    box-shadow: 0 1.5rem 3.5rem rgba(12, 37, 65, .25);
+}
+
+.delete-dialog::backdrop { background: rgba(7, 26, 51, .55); }
+.delete-dialog form { display: grid; gap: 1.25rem; }
+.delete-dialog p { margin: 0; color: var(--muted); line-height: 1.5; }
+.dialog-actions button { padding: .55rem .8rem; }
+
 @keyframes enter {
     from { opacity: 0; transform: translateY(.65rem); }
     to { opacity: 1; transform: translateY(0); }
@@ -501,4 +559,5 @@ button, textarea { font: inherit; }
     .conversation-heading, .messages, .composer { padding-right: 1.15rem; padding-left: 1.15rem; }
     .composer { grid-template-columns: 1fr; }
     .composer button { min-height: 2.9rem; }
+    .module-file-list li { align-items: flex-start; flex-direction: column; }
 }

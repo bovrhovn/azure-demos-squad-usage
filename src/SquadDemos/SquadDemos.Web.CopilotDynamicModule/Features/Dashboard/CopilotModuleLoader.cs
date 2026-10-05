@@ -16,6 +16,10 @@ public interface ICopilotModuleLoader
 {
     IReadOnlyList<ICopilotModule> GetModules();
 
+    IReadOnlyList<string> GetModuleFiles();
+
+    bool DeleteModule(string moduleFileName);
+
     void Refresh();
 }
 
@@ -83,6 +87,33 @@ public sealed class CopilotModuleLoader : ICopilotModuleLoader, IDisposable
     {
         Cache.Remove(ModuleTypesCacheKey);
         Logger.LogInformation("Copilot module cache invalidated.");
+    }
+
+    public IReadOnlyList<string> GetModuleFiles() =>
+        Directory.EnumerateFiles(ModuleFolderPath, "*.dll", SearchOption.TopDirectoryOnly)
+            .Select(path => Path.GetFileName(path)!)
+            .OrderBy(fileName => fileName, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+    public bool DeleteModule(string moduleFileName)
+    {
+        if (string.IsNullOrWhiteSpace(moduleFileName)
+            || !moduleFileName.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(Path.GetFileName(moduleFileName), moduleFileName, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        var assemblyPath = Path.Combine(ModuleFolderPath, moduleFileName);
+        if (!File.Exists(assemblyPath))
+        {
+            return false;
+        }
+
+        File.Delete(assemblyPath);
+        Refresh();
+        Logger.LogInformation("Deleted Copilot module {ModuleFileName}.", moduleFileName);
+        return true;
     }
 
     public void Dispose()

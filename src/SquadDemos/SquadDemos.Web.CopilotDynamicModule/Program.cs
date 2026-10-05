@@ -19,6 +19,7 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseRouting();
+app.UseGitHubAuthentication();
 app.MapStaticAssets();
 app.MapRazorPages()
    .WithStaticAssets();

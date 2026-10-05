@@ -7,24 +7,16 @@
 <section class="settings-panel">
     <p class="eyebrow">GITHUB COPILOT</p>
     <h1>Model selector</h1>
-    @if (!Model.IsAuthenticated)
+    <p>Choose the default model used for new chat requests and dynamic dashboard modules.</p>
+    <form method="post">
+        <label for="model">Default model</label>
+        <select id="model" asp-for="SelectedModel" asp-items="Model.Models">
+            <option value="">Copilot default</option>
+        </select>
+        <button type="submit">Save model</button>
+    </form>
+    @if (!string.IsNullOrWhiteSpace(Model.StatusMessage))
     {
-        <p>Authenticate with GitHub before choosing a model.</p>
-        <a class="button-link" href="@Model.AuthenticationUrl" target="_blank" rel="noreferrer">Authenticate with GitHub</a>
-    }
-    else
-    {
-        <p>Choose the default model used for new chat requests and dynamic dashboard modules.</p>
-        <form method="post">
-            <label for="model">Default model</label>
-            <select id="model" asp-for="SelectedModel" asp-items="Model.Models">
-                <option value="">Copilot default</option>
-            </select>
-            <button type="submit">Save model</button>
-        </form>
-        @if (!string.IsNullOrWhiteSpace(Model.StatusMessage))
-        {
-            <p class="success-message" role="status">@Model.StatusMessage</p>
-        }
+        <p class="success-message" role="status">@Model.StatusMessage</p>
     }
 </section>
