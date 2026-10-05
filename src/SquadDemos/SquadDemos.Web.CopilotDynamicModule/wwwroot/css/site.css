@@ -384,6 +384,36 @@ button, textarea { font: inherit; }
     white-space: pre-wrap;
 }
 
+.agent-message-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: .65rem;
+}
+
+.copy-message {
+    border: 1px solid #9badc1;
+    background: #fff;
+    color: var(--blue-dark);
+    cursor: pointer;
+    font-size: .72rem;
+    font-weight: 800;
+    padding: .35rem .55rem;
+}
+
+.copy-message:hover, .copy-message:focus-visible {
+    border-color: var(--blue);
+    background: #e7f3ff;
+}
+
+.token-usage {
+    margin-top: .6rem !important;
+    color: var(--muted);
+    font-family: Bahnschrift, "Trebuchet MS", sans-serif !important;
+    font-size: .7rem;
+    line-height: 1.35 !important;
+    white-space: normal !important;
+}
+
 .composer {
     display: grid;
     grid-template-columns: 1fr auto;

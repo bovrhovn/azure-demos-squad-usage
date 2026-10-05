@@ -2,7 +2,15 @@ const { createApp } = Vue;
 
 createApp({
     data() {
-        return { sessions: [], selectedSession: null, selectedSessionId: null, message: "", isSending: false, error: "" };
+        return {
+            sessions: [],
+            selectedSession: null,
+            selectedSessionId: null,
+            message: "",
+            isSending: false,
+            error: "",
+            copiedMessageId: null
+        };
     },
     async mounted() {
         await this.loadSessions();
@@ -33,6 +41,7 @@ createApp({
             this.selectedSessionId = null;
             this.message = "";
             this.error = "";
+            this.copiedMessageId = null;
         },
         async sendMessage() {
             if (!this.message || this.isSending) return;
@@ -63,6 +72,27 @@ createApp({
         },
         formatDate(value) {
             return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(value));
+        },
+        async copyMessage(message) {
+            try {
+                await navigator.clipboard.writeText(message.content);
+                this.copiedMessageId = message.id;
+            } catch (error) {
+                this.error = "Unable to copy the agent response.";
+            }
+        },
+        formatTokenUsage(tokenUsage) {
+            if (!tokenUsage) return "Token usage unavailable.";
+
+            const usage = [
+                ["Input", tokenUsage.inputTokens],
+                ["Output", tokenUsage.outputTokens],
+                ["Reasoning", tokenUsage.reasoningTokens]
+            ].filter(([, count]) => Number.isInteger(count));
+
+            return usage.length === 0
+                ? "Token usage unavailable."
+                : `Token usage: ${usage.map(([name, count]) => `${name} ${count.toLocaleString()}`).join(" · ")}`;
         }
     }
 }).mount("#chat-app");

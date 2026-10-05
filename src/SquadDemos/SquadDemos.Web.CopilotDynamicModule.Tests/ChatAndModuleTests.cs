@@ -9,7 +9,8 @@ public sealed class ChatAndModuleTests
     [Fact]
     public async Task SendMessageAsync_creates_a_session_and_keeps_conversation_history()
     {
-        var service = new ChatService(new FakeCopilotChatClient("Hello from Copilot."));
+        var tokenUsage = new ChatTokenUsage(24, 12, 8);
+        var service = new ChatService(new FakeCopilotChatClient("Hello from Copilot.", tokenUsage));
 
         var session = await service.SendMessageAsync(
             "user-1",
@@ -21,7 +22,11 @@ public sealed class ChatAndModuleTests
         Assert.Collection(
             session.Messages,
             message => Assert.Equal(("user", "Explain modules."), (message.Role, message.Content)),
-            message => Assert.Equal(("assistant", "Hello from Copilot."), (message.Role, message.Content)));
+            message =>
+            {
+                Assert.Equal(("assistant", "Hello from Copilot."), (message.Role, message.Content));
+                Assert.Equal(tokenUsage, message.TokenUsage);
+            });
         Assert.Equal(session.Id, Assert.Single(service.GetSessions("user-1")).Id);
     }
 
@@ -45,13 +50,13 @@ public sealed class ChatAndModuleTests
             module => Assert.Equal((20, "<section>second-dashboard</section>"), (module.Order, module.Html)));
     }
 
-    private sealed class FakeCopilotChatClient(string response) : ICopilotChatClient
+    private sealed class FakeCopilotChatClient(string response, ChatTokenUsage? tokenUsage = null) : ICopilotChatClient
     {
-        public Task<string> GetResponseAsync(
+        public Task<CopilotChatResponse> GetResponseAsync(
             IReadOnlyList<ChatMessage> messages,
             string? model,
             CancellationToken cancellationToken) =>
-            Task.FromResult(response);
+            Task.FromResult(new CopilotChatResponse(response, tokenUsage));
     }
 
     private sealed class TestModule(int order, string name) : ICopilotModule

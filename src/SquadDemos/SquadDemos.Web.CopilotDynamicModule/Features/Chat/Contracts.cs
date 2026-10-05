@@ -1,6 +1,15 @@
 namespace SquadDemos.Web.CopilotDynamicModule.Features.Chat;
 
-public sealed record ChatMessage(Guid Id, string Role, string Content, DateTimeOffset CreatedAt);
+public sealed record ChatTokenUsage(long? InputTokens, long? OutputTokens, long? ReasoningTokens);
+
+public sealed record CopilotChatResponse(string Content, ChatTokenUsage? TokenUsage);
+
+public sealed record ChatMessage(
+    Guid Id,
+    string Role,
+    string Content,
+    DateTimeOffset CreatedAt,
+    ChatTokenUsage? TokenUsage = null);
 
 public sealed record ChatSession(Guid Id, string Title, DateTimeOffset UpdatedAt, IReadOnlyList<ChatMessage> Messages);
 
@@ -10,7 +19,7 @@ public sealed record SendChatMessageRequest(Guid? SessionId, string Message);
 
 public interface ICopilotChatClient
 {
-    Task<string> GetResponseAsync(
+    Task<CopilotChatResponse> GetResponseAsync(
         IReadOnlyList<ChatMessage> messages,
         string? model,
         CancellationToken cancellationToken);

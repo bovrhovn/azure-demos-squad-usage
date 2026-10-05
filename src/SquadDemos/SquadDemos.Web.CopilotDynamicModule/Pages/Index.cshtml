@@ -36,6 +36,15 @@
                 <div class="message-content">
                     <strong>{{ message.role === 'assistant' ? 'Agent' : 'You' }}</strong>
                     <p>{{ message.content }}</p>
+                    <template v-if="message.role === 'assistant'">
+                        <div class="agent-message-actions">
+                            <button type="button" class="copy-message" @@click="copyMessage(message)"
+                                    :aria-label="`Copy agent response`">
+                                {{ copiedMessageId === message.id ? 'Copied' : 'Copy' }}
+                            </button>
+                        </div>
+                        <p class="token-usage">{{ formatTokenUsage(message.tokenUsage) }}</p>
+                    </template>
                 </div>
             </article>
         </div>

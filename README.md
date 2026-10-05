@@ -40,6 +40,18 @@ dotnet build src\SquadDemos\SquadDemos.slnx
 
 ## Run the demos
 
+### Local launch scripts
+
+The numbered scripts in [`scripts`](scripts) run each demo from any working directory and forward application
+arguments. Use `-Configuration Release` to select a release build and `-NoBuild` after building the solution.
+The [scripts README](scripts/README.md) documents all parameters and test commands.
+
+```powershell
+.\scripts\01-ghcopilot.ps1
+.\scripts\02-squadhello.ps1 -ProjectDir C:\path\to\squad-folder
+.\scripts\03-copilotdynamicmodule.ps1 -ApplicationArguments @('--urls', 'http://localhost:5050')
+```
+
 ### GitHub Copilot SDK
 
 The demo prompts for a question, creates a streaming Copilot session, prints received assistant messages, and then prints the final response.

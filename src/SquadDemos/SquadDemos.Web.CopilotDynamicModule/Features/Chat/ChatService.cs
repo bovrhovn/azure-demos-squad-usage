@@ -54,7 +54,12 @@ public sealed class ChatService(ICopilotChatClient copilotChatClient) : IChatSer
 
         lock (sessions)
         {
-            var agentMessage = new ChatMessage(Guid.NewGuid(), "assistant", response, DateTimeOffset.UtcNow);
+            var agentMessage = new ChatMessage(
+                Guid.NewGuid(),
+                "assistant",
+                response.Content,
+                DateTimeOffset.UtcNow,
+                response.TokenUsage);
             session = session with
             {
                 Messages = [.. session.Messages, agentMessage],

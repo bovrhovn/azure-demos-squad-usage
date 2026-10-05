@@ -127,11 +127,60 @@ public sealed class GitHubCopilotService(
         }
     }
 
-    Task<string> ICopilotChatClient.GetResponseAsync(
+    async Task<CopilotChatResponse> ICopilotChatClient.GetResponseAsync(
         IReadOnlyList<ChatMessage> messages,
         string? model,
-        CancellationToken cancellationToken) =>
-        GetResponseAsync(messages, model, cancellationToken);
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await using var client = CreateClient();
+            await using var session = await client.CreateSessionAsync(new SessionConfig
+            {
+                Model = string.IsNullOrWhiteSpace(model) ? options.DefaultModel : model,
+                WorkingDirectory = skillStore.FolderPath,
+                SkillDirectories = [skillStore.FolderPath],
+                EnableSkills = true,
+                SystemMessage = new SystemMessageConfig
+                {
+                    Content = options.SystemPrompt
+                },
+                OnPermissionRequest = PermissionHandler.ApproveAll
+            }, cancellationToken);
+
+            ChatTokenUsage? tokenUsage = null;
+            using var usageSubscription = session.On<AssistantUsageEvent>(usageEvent =>
+            {
+                tokenUsage = new ChatTokenUsage(
+                    usageEvent.Data.InputTokens,
+                    usageEvent.Data.OutputTokens,
+                    usageEvent.Data.ReasoningTokens);
+            });
+
+            var response = await session.SendAndWaitAsync(
+                new MessageOptions { Prompt = FormatConversation(messages) },
+                TimeSpan.FromSeconds(options.RequestTimeoutSeconds),
+                cancellationToken);
+            var content = response?.Data.Content
+                ?? throw new InvalidOperationException("GitHub Copilot returned an empty response.");
+
+            return new CopilotChatResponse(
+                content,
+                tokenUsage ?? new ChatTokenUsage(null, response.Data.OutputTokens, null));
+        }
+        catch (CopilotRequestException)
+        {
+            throw;
+        }
+        catch (InvalidOperationException)
+        {
+            throw;
+        }
+        catch (TimeoutException exception)
+        {
+            throw new CopilotRequestException("GitHub Copilot did not respond before the configured timeout.", exception);
+        }
+    }
 
     private CopilotClient CreateClient() =>
         new(new CopilotClientOptions
