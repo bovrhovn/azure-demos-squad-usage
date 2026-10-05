@@ -9,13 +9,43 @@ createApp({
             message: "",
             isSending: false,
             error: "",
-            copiedMessageId: null
+            copiedMessageId: null,
+            hubConnection: null
         };
     },
     async mounted() {
+        await this.startHubConnection();
         await this.loadSessions();
     },
     methods: {
+        async startHubConnection() {
+            if (!window.signalR) {
+                this.error = "Live chat updates are unavailable because SignalR could not be loaded.";
+                return;
+            }
+
+            const connection = new signalR.HubConnectionBuilder()
+                .withUrl("/hubs/chat")
+                .withAutomaticReconnect()
+                .build();
+
+            connection.on("SessionUpdated", session => {
+                if (this.selectedSessionId === session.id) {
+                    this.selectedSession = session;
+                }
+
+                this.sessions = [{ id: session.id, title: session.title, updatedAt: session.updatedAt },
+                    ...this.sessions.filter(item => item.id !== session.id)];
+            });
+            connection.onreconnected(async () => await this.joinSelectedSession());
+
+            try {
+                await connection.start();
+                this.hubConnection = connection;
+            } catch (error) {
+                this.error = "Live chat updates could not be connected.";
+            }
+        },
         async loadSessions() {
             this.error = "";
             try {
@@ -30,18 +60,43 @@ createApp({
             this.error = "";
             try {
                 const response = await fetch(`/api/chat/sessions/${sessionId}`);
-                this.selectedSession = await this.readJson(response);
+                const session = await this.readJson(response);
+                await this.leaveSession(this.selectedSessionId);
+                this.selectedSession = session;
                 this.selectedSessionId = sessionId;
+                await this.joinSelectedSession();
             } catch (error) {
                 this.error = error.message;
             }
         },
         startNewChat() {
+            this.leaveSelectedSession();
             this.selectedSession = null;
             this.selectedSessionId = null;
             this.message = "";
             this.error = "";
             this.copiedMessageId = null;
+        },
+        async joinSelectedSession() {
+            if (!this.hubConnection || !this.selectedSessionId) return;
+
+            try {
+                await this.hubConnection.invoke("JoinSession", this.selectedSessionId);
+            } catch (error) {
+                this.error = "Live chat updates could not join the selected conversation.";
+            }
+        },
+        async leaveSelectedSession() {
+            await this.leaveSession(this.selectedSessionId);
+        },
+        async leaveSession(sessionId) {
+            if (!this.hubConnection || !sessionId) return;
+
+            try {
+                await this.hubConnection.invoke("LeaveSession", sessionId);
+            } catch (error) {
+                this.error = "Live chat updates could not leave the selected conversation.";
+            }
         },
         async sendMessage() {
             if (!this.message || this.isSending) return;

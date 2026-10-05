@@ -10,7 +10,8 @@ public sealed class ChatAndModuleTests
     public async Task SendMessageAsync_creates_a_session_and_keeps_conversation_history()
     {
         var tokenUsage = new ChatTokenUsage(24, 12, 8);
-        var service = new ChatService(new FakeCopilotChatClient("Hello from Copilot.", tokenUsage));
+        var notifier = new FakeChatSessionNotifier();
+        var service = new ChatService(new FakeCopilotChatClient("Hello from Copilot.", tokenUsage), notifier);
 
         var session = await service.SendMessageAsync(
             "user-1",
@@ -28,6 +29,7 @@ public sealed class ChatAndModuleTests
                 Assert.Equal(tokenUsage, message.TokenUsage);
             });
         Assert.Equal(session.Id, Assert.Single(service.GetSessions("user-1")).Id);
+        Assert.Equal(session, Assert.Single(notifier.UpdatedSessions));
     }
 
     [Fact]
@@ -57,6 +59,17 @@ public sealed class ChatAndModuleTests
             string? model,
             CancellationToken cancellationToken) =>
             Task.FromResult(new CopilotChatResponse(response, tokenUsage));
+    }
+
+    private sealed class FakeChatSessionNotifier : IChatSessionNotifier
+    {
+        public List<ChatSession> UpdatedSessions { get; } = [];
+
+        public Task NotifySessionUpdatedAsync(ChatSession session, CancellationToken cancellationToken)
+        {
+            UpdatedSessions.Add(session);
+            return Task.CompletedTask;
+        }
     }
 
     private sealed class TestModule(int order, string name) : ICopilotModule

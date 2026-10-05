@@ -8,6 +8,8 @@ public static class ChatFeature
     public static IServiceCollection AddChatFeature(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton<IChatService, ChatService>();
+        services.AddSingleton<IChatSessionNotifier, SignalRChatSessionNotifier>();
+        services.AddSignalR();
         return services;
     }
 

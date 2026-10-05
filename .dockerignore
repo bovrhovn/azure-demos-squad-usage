@@ -1,0 +1,7 @@
+.git
+.github
+.squad
+.vs
+**/bin
+**/obj
+**/.env

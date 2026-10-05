@@ -2,7 +2,9 @@ using System.Collections.Concurrent;
 
 namespace SquadDemos.Web.CopilotDynamicModule.Features.Chat;
 
-public sealed class ChatService(ICopilotChatClient copilotChatClient) : IChatService
+public sealed class ChatService(
+    ICopilotChatClient copilotChatClient,
+    IChatSessionNotifier chatSessionNotifier) : IChatService
 {
     private readonly ConcurrentDictionary<string, List<ChatSession>> sessionsByUser = new();
 
@@ -68,6 +70,7 @@ public sealed class ChatService(ICopilotChatClient copilotChatClient) : IChatSer
             ReplaceSession(sessions, session);
         }
 
+        await chatSessionNotifier.NotifySessionUpdatedAsync(session, cancellationToken);
         return session;
     }
 
