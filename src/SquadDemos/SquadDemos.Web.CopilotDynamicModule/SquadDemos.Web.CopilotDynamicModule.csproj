@@ -11,4 +11,8 @@
     <PackageReference Include="GitHub.Copilot.SDK" Version="1.0.14" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Pages\Profile\" />
+  </ItemGroup>
+
 </Project>

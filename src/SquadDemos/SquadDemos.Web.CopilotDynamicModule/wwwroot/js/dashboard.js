@@ -14,6 +14,13 @@ createApp({
     async mounted() {
         await this.loadDashboard();
     },
+    computed: {
+        moduleOrderRange() {
+            if (this.modules.length === 0) return "None";
+            const orders = this.modules.map(module => module.order).sort((first, second) => first - second);
+            return orders.length === 1 ? String(orders[0]) : `${orders[0]} to ${orders.at(-1)}`;
+        }
+    },
     methods: {
         async loadDashboard(refresh = false) {
             this.isLoading = true;

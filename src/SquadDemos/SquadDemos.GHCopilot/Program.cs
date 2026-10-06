@@ -4,13 +4,9 @@ using Spectre.Console;
 AnsiConsole.MarkupLine("[green]GitHub Copilot demo![/]");
 await using var client = new CopilotClient();
 
-await using var session = await client.CreateSessionAsync(new SessionConfig
-{
-    Streaming = true,
-    OnPermissionRequest = PermissionHandler.ApproveAll
-});
+await using var session = await client.CreateSessionAsync(CopilotDemoConfiguration.CreateSessionConfig());
 var question =
-    AnsiConsole.Ask<string>("Ask a question", "Identify yourself and tell me how much credits will you use.");
+    AnsiConsole.Ask<string>("Ask a question", CopilotDemoConfiguration.DefaultQuestion);
 AnsiConsole.MarkupLine("[blue]Sending question to Copilot: [/] " + question);
 
 var events = session.On<SessionEvent>(ev =>

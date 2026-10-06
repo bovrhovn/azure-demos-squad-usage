@@ -15,6 +15,22 @@ public sealed class CopilotModuleLoaderTests : IDisposable
     private readonly string webRootPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
 
     [Fact]
+    public void GetModules_returns_no_built_in_modules_when_the_module_folder_is_empty()
+    {
+        Directory.CreateDirectory(webRootPath);
+        using var serviceProvider = new ServiceCollection().BuildServiceProvider();
+        using var cache = new MemoryCache(new MemoryCacheOptions());
+        using var loader = new CopilotModuleLoader(
+            new TestWebHostEnvironment(webRootPath),
+            cache,
+            serviceProvider,
+            Options.Create(new ModuleLoaderOptions { FolderName = "modules" }),
+            NullLogger<CopilotModuleLoader>.Instance);
+
+        Assert.Empty(loader.GetModules());
+    }
+
+    [Fact]
     public void Refresh_removes_deleted_modules_from_the_cached_list()
     {
         var modulesPath = Path.Combine(webRootPath, "modules");

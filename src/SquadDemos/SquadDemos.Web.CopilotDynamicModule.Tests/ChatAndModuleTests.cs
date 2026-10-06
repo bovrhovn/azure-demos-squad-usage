@@ -48,8 +48,8 @@ public sealed class ChatAndModuleTests
 
         Assert.Collection(
             result,
-            module => Assert.Equal((10, "<section>first-dashboard</section>"), (module.Order, module.Html)),
-            module => Assert.Equal((20, "<section>second-dashboard</section>"), (module.Order, module.Html)));
+            module => Assert.Equal((10, "TestModule", "<section>first-dashboard</section>"), (module.Order, module.Name, module.Html)),
+            module => Assert.Equal((20, "TestModule", "<section>second-dashboard</section>"), (module.Order, module.Name, module.Html)));
     }
 
     private sealed class FakeCopilotChatClient(string response, ChatTokenUsage? tokenUsage = null) : ICopilotChatClient

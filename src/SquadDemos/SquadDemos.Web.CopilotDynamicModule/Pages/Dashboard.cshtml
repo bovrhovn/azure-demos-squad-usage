@@ -13,11 +13,38 @@
             {{ isLoading ? 'Loading...' : 'Refresh' }}
         </button>
     </div>
-    <p class="dashboard-intro">A live editorial view of modules discovered from the runtime folder. Each module runs in ascending order and renders inside an isolated frame.</p>
+    <p class="dashboard-intro">A live view of modules discovered from the runtime folder. Module statistics are updated after every load; generated module content renders in isolated frames.</p>
     <p v-if="error" class="error-message" role="alert">{{ error }}</p>
+    <section class="module-statistics" aria-labelledby="module-statistics-heading" aria-live="polite">
+        <div class="module-statistics-heading">
+            <p class="eyebrow">MODULE STATISTICS</p>
+            <h2 id="module-statistics-heading">Current runtime inventory</h2>
+        </div>
+        <dl>
+            <div>
+                <dt>Loaded modules</dt>
+                <dd>{{ modules.length }}</dd>
+                <p>Modules that completed this load.</p>
+            </div>
+            <div>
+                <dt>Deployed assemblies</dt>
+                <dd>{{ moduleFiles.length }}</dd>
+                <p>DLLs available in the module folder.</p>
+            </div>
+            <div>
+                <dt>Execution order</dt>
+                <dd>{{ moduleOrderRange }}</dd>
+                <p>Lowest through highest module order.</p>
+            </div>
+        </dl>
+        <p v-if="modules.length === 0" class="empty-state">No dashboard modules were discovered.</p>
+        <ul v-else class="module-name-list" aria-label="Loaded module names">
+            <li v-for="module in modules" :key="`${module.order}-${module.name}`">{{ module.name }} <span>Order {{ module.order }}</span></li>
+        </ul>
+    </section>
     <section class="module-grid" aria-live="polite">
-        <iframe v-for="module in modules" :key="module.order" class="module-frame" sandbox
-                :title="`Dashboard module ${module.order}`" :srcdoc="module.html"></iframe>
+        <iframe v-for="module in modules" :key="`${module.order}-${module.name}`" class="module-frame" sandbox
+                :title="`${module.name}, dashboard module ${module.order}`" :srcdoc="module.html"></iframe>
     </section>
     <section class="module-management" aria-labelledby="module-management-heading">
         <div>

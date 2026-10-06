@@ -6,8 +6,8 @@ using Squad.Agents.AI;
 
 AnsiConsole.MarkupLine("[green]Hello, Squad![/]");
 
-var squadFolderPath = Environment.GetEnvironmentVariable("PROJECTDIR");
-ArgumentException.ThrowIfNullOrEmpty(squadFolderPath, "PROJECTDIR environment variable is not set.");
+var squadFolderPath = SquadDemoConfiguration.GetRequiredFolderPath(
+    () => Environment.GetEnvironmentVariable("PROJECTDIR"));
 AnsiConsole.MarkupLine("[grey] Squad folder path is [/] " + squadFolderPath);
 
 var builder = Host.CreateApplicationBuilder(args);
@@ -27,8 +27,7 @@ AnsiConsole.MarkupLine("[grey]Sending [/]: What is 2 + 2?");
 
 var session1 = await agent1.CreateSessionAsync();
 var result1 = await agent1.RunAsync(
-    "What is 2 + 2? " +
-    "Return result and let me know who you are who did the execution.",
+    SquadDemoConfiguration.Prompt,
     session1);
 
 if (result1 is not null)

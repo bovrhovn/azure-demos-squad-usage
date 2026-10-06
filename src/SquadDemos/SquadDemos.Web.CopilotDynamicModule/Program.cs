@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.HttpOverrides;
 using SquadDemos.Web.CopilotDynamicModule.Features.Chat;
 using SquadDemos.Web.CopilotDynamicModule.Features.Copilot;
 using SquadDemos.Web.CopilotDynamicModule.Features.Dashboard;
@@ -24,9 +23,8 @@ app.UseForwardedHeaders();
 app.UseHttpsRedirection();
 app.UseRouting();
 app.UseGitHubAuthentication();
-app.MapStaticAssets();
-app.MapRazorPages()
-   .WithStaticAssets();
+app.UseStaticFiles();
+app.MapRazorPages();
 app.MapControllers();
 app.MapChatFeatureApi();
 app.MapDashboardFeatureApi();

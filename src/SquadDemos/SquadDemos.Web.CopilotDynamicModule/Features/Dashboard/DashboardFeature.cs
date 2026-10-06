@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Options;
-using SquadDemos.Web.CopilotDynamicModule.Features.Chat;
 using SquadDemos.Web.CopilotDynamicModule.Features.Copilot;
 
 namespace SquadDemos.Web.CopilotDynamicModule.Features.Dashboard;
@@ -11,7 +10,7 @@ public sealed class DashboardOptions
     public Dictionary<string, string> Configuration { get; init; } = [];
 }
 
-public sealed record DashboardModuleResponse(int Order, string Html);
+public sealed record DashboardModuleResponse(int Order, string Name, string Html);
 
 public sealed class CopilotModuleRunner(
     ICopilotModuleLoader moduleLoader,
@@ -34,28 +33,11 @@ public sealed class CopilotModuleRunner(
         {
             generated.Add(new DashboardModuleResponse(
                 module.Order,
+                module.GetType().Name,
                 await module.GetGeneratedHtmlAsync(cancellationToken)));
         }
 
         return generated;
-    }
-}
-
-public sealed class CopilotDashboardModule(ICopilotService copilot) : ICopilotModule
-{
-    private readonly Dictionary<string, string> configuration = [];
-
-    public int Order => 100;
-
-    public void SetConfiguration(KeyValuePair<string, string> configuration) =>
-        this.configuration[configuration.Key] = configuration.Value;
-
-    public Task<string> GetGeneratedHtmlAsync(CancellationToken cancellationToken = default)
-    {
-        var prompt = configuration.GetValueOrDefault("dashboardPrompt")
-            ?? throw new InvalidOperationException("Dashboard:Configuration:dashboardPrompt must be configured.");
-        var message = new ChatMessage(Guid.NewGuid(), "user", prompt, DateTimeOffset.UtcNow);
-        return copilot.GetResponseAsync([message], null, cancellationToken);
     }
 }
 
