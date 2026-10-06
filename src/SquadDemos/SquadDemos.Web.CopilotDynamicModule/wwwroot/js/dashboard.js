@@ -6,6 +6,9 @@ createApp({
             modules: [],
             moduleFiles: [],
             modulePendingDeletion: "",
+            moduleRequest: "",
+            isCreating: false,
+            isUploading: false,
             isDeleting: false,
             isLoading: false,
             error: ""
@@ -44,6 +47,48 @@ createApp({
             const body = await response.json();
             if (!response.ok) throw new Error(body.detail ?? body.title ?? "The module list could not be loaded.");
             this.moduleFiles = body;
+        },
+        async createModule() {
+            this.isCreating = true;
+            this.error = "";
+            try {
+                const response = await fetch("/api/dashboard/modules", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ prompt: this.moduleRequest })
+                });
+                const body = await response.json();
+                if (!response.ok) throw new Error(body.detail ?? body.title ?? body ?? "The module could not be created.");
+                this.moduleRequest = "";
+                await this.loadDashboard(true);
+            } catch (error) {
+                this.error = error.message;
+            } finally {
+                this.isCreating = false;
+            }
+        },
+        async uploadModule(event) {
+            const [moduleFile] = event.target.files;
+            if (!moduleFile) return;
+
+            this.isUploading = true;
+            this.error = "";
+            try {
+                const formData = new FormData();
+                formData.append("moduleFile", moduleFile);
+                const response = await fetch("/api/dashboard/module-files", {
+                    method: "POST",
+                    body: formData
+                });
+                const body = await response.json();
+                if (!response.ok) throw new Error(body.detail ?? body.title ?? body ?? "The module could not be uploaded.");
+                await this.loadDashboard(true);
+            } catch (error) {
+                this.error = error.message;
+            } finally {
+                event.target.value = "";
+                this.isUploading = false;
+            }
         },
         openDeleteDialog(moduleFile) {
             this.modulePendingDeletion = moduleFile;

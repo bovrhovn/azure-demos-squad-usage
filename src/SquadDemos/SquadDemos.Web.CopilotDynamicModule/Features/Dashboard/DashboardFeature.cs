@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.Http.HttpResults;
 using SquadDemos.Web.CopilotDynamicModule.Features.Copilot;
 
 namespace SquadDemos.Web.CopilotDynamicModule.Features.Dashboard;
@@ -50,9 +51,16 @@ public static class DashboardFeature
             .ValidateOnStart();
         services.AddOptions<ModuleLoaderOptions>()
             .Bind(configuration.GetSection(ModuleLoaderOptions.SectionName))
+            .Validate(
+                options => options.MaxModuleFileSizeBytes > 0,
+                "Modules:MaxModuleFileSizeBytes must be greater than zero.")
+            .Validate(
+                options => options.MaxGenerationPromptLength > 0,
+                "Modules:MaxGenerationPromptLength must be greater than zero.")
             .ValidateOnStart();
         services.AddMemoryCache();
         services.AddSingleton<ICopilotModuleLoader, CopilotModuleLoader>();
+        services.AddScoped<ICopilotModuleService, CopilotModuleService>();
         services.AddScoped<CopilotModuleRunner>();
         return services;
     }
@@ -98,6 +106,52 @@ public static class DashboardFeature
             .WithTags("Dashboard")
             .WithName("GetDashboardModuleFiles")
             .WithSummary("Lists module assemblies that can be deleted from the dashboard.");
+
+        endpoints.MapPost("/api/dashboard/module-files", async Task<Results<Ok<string>, BadRequest<string>, ProblemHttpResult>> (
+            IFormFile moduleFile,
+            ICopilotModuleService moduleService,
+            CancellationToken cancellationToken) =>
+        {
+            try
+            {
+                return TypedResults.Ok(await moduleService.UploadAsync(moduleFile, cancellationToken));
+            }
+            catch (ArgumentException exception)
+            {
+                return TypedResults.BadRequest(exception.Message);
+            }
+        })
+            .WithTags("Dashboard")
+            .WithName("UploadDashboardModuleFile")
+            .WithSummary("Validates and deploys a dashboard module assembly.");
+
+        endpoints.MapPost("/api/dashboard/modules", async Task<Results<Ok<string>, BadRequest<string>, ProblemHttpResult>> (
+            CreateDashboardModuleRequest request,
+            ICopilotModuleService moduleService,
+            CancellationToken cancellationToken) =>
+        {
+            try
+            {
+                return TypedResults.Ok(await moduleService.CreateAsync(request.Prompt, cancellationToken));
+            }
+            catch (ArgumentException exception)
+            {
+                return TypedResults.BadRequest(exception.Message);
+            }
+            catch (InvalidOperationException exception)
+            {
+                return TypedResults.Problem(exception.Message, statusCode: StatusCodes.Status503ServiceUnavailable);
+            }
+            catch (CopilotRequestException)
+            {
+                return TypedResults.Problem(
+                    "GitHub Copilot could not create the dashboard module.",
+                    statusCode: StatusCodes.Status502BadGateway);
+            }
+        })
+            .WithTags("Dashboard")
+            .WithName("CreateDashboardModule")
+            .WithSummary("Creates, compiles, validates, and deploys a Copilot-authored dashboard module.");
 
         endpoints.MapDelete("/api/dashboard/module-files/{moduleFileName}", (
             string moduleFileName,

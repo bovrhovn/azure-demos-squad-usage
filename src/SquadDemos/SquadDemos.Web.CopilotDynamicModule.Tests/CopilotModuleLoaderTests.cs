@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
@@ -103,6 +104,65 @@ public sealed class CopilotModuleLoaderTests : IDisposable
         Assert.False(loader.DeleteModule(@"..\outside.dll"));
     }
 
+    [Fact]
+    public async Task CreateAsync_compiles_and_deploys_the_module_returned_by_Copilot()
+    {
+        Directory.CreateDirectory(webRootPath);
+        using var serviceProvider = new ServiceCollection().BuildServiceProvider();
+        using var cache = new MemoryCache(new MemoryCacheOptions());
+        using var loader = new CopilotModuleLoader(
+            new TestWebHostEnvironment(webRootPath),
+            cache,
+            serviceProvider,
+            Options.Create(new ModuleLoaderOptions { FolderName = "modules" }),
+            NullLogger<CopilotModuleLoader>.Instance);
+        var service = new CopilotModuleService(
+            new GeneratedModuleCopilotService(),
+            loader,
+            Options.Create(new ModuleLoaderOptions
+            {
+                FolderName = "modules",
+                MaxModuleFileSizeBytes = 1024,
+                MaxGenerationPromptLength = 100
+            }));
+
+        var moduleFile = await service.CreateAsync("Show a delivery summary.", CancellationToken.None);
+
+        Assert.Contains(moduleFile, loader.GetModuleFiles());
+        Assert.Contains(loader.GetModules(), module => module.GetType().Name == "GeneratedModule");
+    }
+
+    [Fact]
+    public async Task UploadAsync_rejects_assemblies_without_an_ICopilotModule_implementation()
+    {
+        Directory.CreateDirectory(webRootPath);
+        using var serviceProvider = new ServiceCollection().BuildServiceProvider();
+        using var cache = new MemoryCache(new MemoryCacheOptions());
+        using var loader = new CopilotModuleLoader(
+            new TestWebHostEnvironment(webRootPath),
+            cache,
+            serviceProvider,
+            Options.Create(new ModuleLoaderOptions { FolderName = "modules" }),
+            NullLogger<CopilotModuleLoader>.Instance);
+        var service = new CopilotModuleService(
+            new FakeCopilotService(),
+            loader,
+            Options.Create(new ModuleLoaderOptions
+            {
+                FolderName = "modules",
+                MaxModuleFileSizeBytes = 1024,
+                MaxGenerationPromptLength = 100
+            }));
+        await using var content = new MemoryStream([0x00]);
+        var file = new FormFile(content, 0, content.Length, "moduleFile", "invalid.dll");
+
+        var exception = await Assert.ThrowsAsync<ArgumentException>(() =>
+            service.UploadAsync(file, CancellationToken.None));
+
+        Assert.Contains("ICopilotModule", exception.Message);
+        Assert.Empty(loader.GetModuleFiles());
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(webRootPath))
@@ -131,6 +191,39 @@ public sealed class CopilotModuleLoaderTests : IDisposable
             string? model,
             CancellationToken cancellationToken) =>
             Task.FromResult("<section>Copilot module</section>");
+    }
+
+    private sealed class GeneratedModuleCopilotService : ICopilotService
+    {
+        public Task<CopilotAuthenticationStatus> GetAuthenticationStatusAsync(CancellationToken cancellationToken) =>
+            Task.FromResult(new CopilotAuthenticationStatus(true, "octocat", "https://github.com/login/device", "/images/default-avatar.svg"));
+
+        public Task<IReadOnlyList<CopilotModel>> GetModelsAsync(CancellationToken cancellationToken) =>
+            Task.FromResult<IReadOnlyList<CopilotModel>>([]);
+
+        public Task<string> GetResponseAsync(
+            IReadOnlyList<ChatMessage> messages,
+            string? model,
+            CancellationToken cancellationToken) =>
+            Task.FromResult(
+                """
+                using System.Collections.Generic;
+                using System.Threading;
+                using System.Threading.Tasks;
+                using SquadDemos.Web.CopilotDynamicModule.Features.Dashboard;
+
+                public sealed class GeneratedModule : ICopilotModule
+                {
+                    public int Order => 100;
+
+                    public Task<string> GetGeneratedHtmlAsync(CancellationToken cancellationToken = default) =>
+                        Task.FromResult("<section>Generated module</section>");
+
+                    public void SetConfiguration(KeyValuePair<string, string> configuration)
+                    {
+                    }
+                }
+                """);
     }
 
     private sealed class TestWebHostEnvironment(string webRootPath) : IWebHostEnvironment

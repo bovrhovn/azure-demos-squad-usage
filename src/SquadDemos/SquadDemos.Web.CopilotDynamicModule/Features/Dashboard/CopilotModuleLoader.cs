@@ -10,6 +10,10 @@ public sealed class ModuleLoaderOptions
     public const string SectionName = "Modules";
 
     public string FolderName { get; init; } = string.Empty;
+
+    public long MaxModuleFileSizeBytes { get; init; }
+
+    public int MaxGenerationPromptLength { get; init; }
 }
 
 public interface ICopilotModuleLoader
@@ -19,6 +23,11 @@ public interface ICopilotModuleLoader
     IReadOnlyList<string> GetModuleFiles();
 
     bool DeleteModule(string moduleFileName);
+
+    Task<string> SaveModuleAsync(
+        Stream assemblyStream,
+        string moduleFileName,
+        CancellationToken cancellationToken);
 
     void Refresh();
 }
@@ -116,6 +125,55 @@ public sealed class CopilotModuleLoader : ICopilotModuleLoader, IDisposable
         return true;
     }
 
+    public async Task<string> SaveModuleAsync(
+        Stream assemblyStream,
+        string moduleFileName,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(assemblyStream);
+
+        if (string.IsNullOrWhiteSpace(moduleFileName)
+            || !moduleFileName.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(Path.GetFileName(moduleFileName), moduleFileName, StringComparison.Ordinal))
+        {
+            throw new ArgumentException("Upload a DLL with a file name only.", nameof(moduleFileName));
+        }
+
+        var destinationPath = Path.Combine(ModuleFolderPath, moduleFileName);
+        if (File.Exists(destinationPath))
+        {
+            throw new ArgumentException("A module with that file name already exists.", nameof(moduleFileName));
+        }
+
+        var temporaryPath = Path.Combine(ModuleFolderPath, $".{Guid.NewGuid():N}.tmp");
+        try
+        {
+            await using (var destination = File.Create(temporaryPath))
+            {
+                await assemblyStream.CopyToAsync(destination, cancellationToken);
+            }
+
+            if (!ContainsCopilotModule(temporaryPath))
+            {
+                throw new ArgumentException(
+                    "The assembly must contain a public, non-abstract implementation of ICopilotModule.",
+                    nameof(assemblyStream));
+            }
+
+            File.Move(temporaryPath, destinationPath);
+            Refresh();
+            Logger.LogInformation("Saved Copilot module {ModuleFileName}.", moduleFileName);
+            return moduleFileName;
+        }
+        finally
+        {
+            if (File.Exists(temporaryPath))
+            {
+                File.Delete(temporaryPath);
+            }
+        }
+    }
+
     public void Dispose()
     {
         watcher.Dispose();
@@ -153,6 +211,29 @@ public sealed class CopilotModuleLoader : ICopilotModuleLoader, IDisposable
             .OrderBy(type => type.FullName, StringComparer.Ordinal)
             .ToArray(),
             loadContexts);
+    }
+
+    private bool ContainsCopilotModule(string assemblyPath)
+    {
+        var loadContext = new ModuleLoadContext(assemblyPath);
+        try
+        {
+            return GetModuleTypes(LoadPluginAssembly(loadContext, assemblyPath)).Any();
+        }
+        catch (BadImageFormatException exception)
+        {
+            Logger.LogWarning(exception, "Rejected invalid Copilot module assembly {AssemblyPath}.", assemblyPath);
+            return false;
+        }
+        catch (FileLoadException exception)
+        {
+            Logger.LogWarning(exception, "Rejected unloadable Copilot module assembly {AssemblyPath}.", assemblyPath);
+            return false;
+        }
+        finally
+        {
+            loadContext.Unload();
+        }
     }
 
     private IEnumerable<Type> GetModuleTypes(Assembly assembly)

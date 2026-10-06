@@ -312,7 +312,7 @@ button, textarea { font: inherit; }
     letter-spacing: -.045em;
 }
 
-.new-chat, .composer button, .dashboard-heading button {
+.new-chat, .composer button, .dashboard-heading button, .module-creator button {
     border: 1px solid var(--blue);
     background: var(--blue);
     color: #fff;
@@ -324,7 +324,7 @@ button, textarea { font: inherit; }
     transition: background .16s ease, transform .16s ease;
 }
 
-.new-chat:hover, .composer button:hover, .dashboard-heading button:hover {
+.new-chat:hover, .composer button:hover, .dashboard-heading button:hover, .module-creator button:hover {
     background: var(--blue-dark);
     transform: translateY(-1px);
 }
@@ -527,7 +527,7 @@ button, textarea { font: inherit; }
 }
 
 .composer button:disabled { cursor: not-allowed; opacity: .6; transform: none; }
-.dashboard-heading button:disabled { cursor: wait; opacity: .6; transform: none; }
+.dashboard-heading button:disabled, .module-creator button:disabled { cursor: wait; opacity: .6; transform: none; }
 
 .empty-state {
     margin: 0;
@@ -550,6 +550,23 @@ button, textarea { font: inherit; }
     border-bottom: 1px solid var(--line);
 }
 
+.dashboard-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: .65rem;
+}
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    clip-path: inset(50%);
+}
+
 .dashboard-intro {
     max-width: 48rem;
     margin: 1.25rem 0 2rem;
@@ -557,6 +574,32 @@ button, textarea { font: inherit; }
     font-family: Georgia, serif;
     font-size: 1.1rem;
     line-height: 1.55;
+}
+
+.module-creator {
+    display: grid;
+    gap: 1rem;
+    margin: 0 0 2rem;
+    padding: 1.5rem;
+    border: 1px solid var(--line);
+    background: var(--paper);
+}
+
+.module-creator h2 { margin: 0; color: var(--navy); }
+.module-creator form { display: grid; gap: .55rem; }
+.module-creator label { color: var(--muted); font-size: .85rem; font-weight: 700; }
+
+.module-creator-controls {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: .65rem;
+}
+
+.module-creator input {
+    min-width: 0;
+    padding: .62rem .8rem;
+    border: 1px solid var(--line);
+    font: inherit;
 }
 
 .module-statistics {
@@ -714,6 +757,7 @@ button, textarea { font: inherit; }
     .conversation-heading, .messages, .composer { padding-right: 1.15rem; padding-left: 1.15rem; }
     .composer { grid-template-columns: minmax(0, 1fr) auto; }
     .composer button { min-height: 3.2rem; }
+    .module-creator-controls { grid-template-columns: 1fr; }
     .module-statistics dl { grid-template-columns: 1fr; }
     .module-file-list li { align-items: flex-start; flex-direction: column; }
 }

@@ -98,6 +98,12 @@ public sealed class ChatAndModuleTests
 
         public bool DeleteModule(string moduleFileName) => false;
 
+        public Task<string> SaveModuleAsync(
+            Stream assemblyStream,
+            string moduleFileName,
+            CancellationToken cancellationToken) =>
+            Task.FromResult(moduleFileName);
+
         public void Refresh()
         {
         }

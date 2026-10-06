@@ -9,12 +9,34 @@
             <p class="eyebrow">MODULES / RUNTIME VIEW</p>
             <h1>Dynamic dashboard</h1>
         </div>
-        <button type="button" @@click="loadDashboard(true)" :disabled="isLoading">
-            {{ isLoading ? 'Loading...' : 'Refresh' }}
-        </button>
+        <div class="dashboard-actions">
+            <input ref="moduleFile" type="file" accept=".dll" class="visually-hidden" @@change="uploadModule">
+            <button type="button" @@click="$refs.moduleFile.click()" :disabled="isLoading || isUploading">
+                {{ isUploading ? 'Uploading...' : 'Upload module' }}
+            </button>
+            <button type="button" @@click="loadDashboard(true)" :disabled="isLoading || isUploading">
+                {{ isLoading ? 'Loading...' : 'Refresh' }}
+            </button>
+        </div>
     </div>
     <p class="dashboard-intro">A live view of modules discovered from the runtime folder. Module statistics are updated after every load; generated module content renders in isolated frames.</p>
     <p v-if="error" class="error-message" role="alert">{{ error }}</p>
+    <section class="module-creator" aria-labelledby="module-creator-heading">
+        <div>
+            <p class="eyebrow">COPILOT MODULE CREATOR</p>
+            <h2 id="module-creator-heading">Create a dashboard module</h2>
+        </div>
+        <form @@submit.prevent="createModule">
+            <label for="module-request">Describe the module to create</label>
+            <div class="module-creator-controls">
+                <input id="module-request" v-model="moduleRequest" :disabled="isCreating" required
+                       placeholder="For example: display a weekly delivery summary.">
+                <button type="submit" :disabled="isCreating || isLoading">
+                    {{ isCreating ? 'Creating...' : 'Create module' }}
+                </button>
+            </div>
+        </form>
+    </section>
     <section class="module-statistics" aria-labelledby="module-statistics-heading" aria-live="polite">
         <div class="module-statistics-heading">
             <p class="eyebrow">MODULE STATISTICS</p>
