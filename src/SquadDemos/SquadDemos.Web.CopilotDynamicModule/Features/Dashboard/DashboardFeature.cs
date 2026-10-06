@@ -60,6 +60,7 @@ public static class DashboardFeature
             .ValidateOnStart();
         services.AddMemoryCache();
         services.AddSingleton<ICopilotModuleLoader, CopilotModuleLoader>();
+        services.AddSingleton<IDashboardModuleGenerationNotifier, SignalRDashboardModuleGenerationNotifier>();
         services.AddScoped<ICopilotModuleService, CopilotModuleService>();
         services.AddScoped<CopilotModuleRunner>();
         return services;
@@ -127,12 +128,19 @@ public static class DashboardFeature
 
         endpoints.MapPost("/api/dashboard/modules", async Task<Results<Ok<string>, BadRequest<string>, ProblemHttpResult>> (
             CreateDashboardModuleRequest request,
+            ICopilotService copilot,
             ICopilotModuleService moduleService,
             CancellationToken cancellationToken) =>
         {
+            var status = await copilot.GetAuthenticationStatusAsync(cancellationToken);
+            if (!status.IsAuthenticated)
+            {
+                return TypedResults.Problem("Authenticate with GitHub to use Copilot.", statusCode: StatusCodes.Status401Unauthorized);
+            }
+
             try
             {
-                return TypedResults.Ok(await moduleService.CreateAsync(request.Prompt, cancellationToken));
+                return TypedResults.Ok(await moduleService.CreateAsync(status.Login!, request.Prompt, cancellationToken));
             }
             catch (ArgumentException exception)
             {

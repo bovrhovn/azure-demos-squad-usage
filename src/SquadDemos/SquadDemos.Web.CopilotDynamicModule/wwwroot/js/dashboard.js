@@ -11,10 +11,13 @@ createApp({
             isUploading: false,
             isDeleting: false,
             isLoading: false,
-            error: ""
+            error: "",
+            hubConnection: null,
+            generationProgress: []
         };
     },
     async mounted() {
+        await this.startHubConnection();
         await this.loadDashboard();
     },
     computed: {
@@ -25,6 +28,44 @@ createApp({
         }
     },
     methods: {
+        async startHubConnection() {
+            if (!window.signalR) {
+                this.error = "Live module-generation updates are unavailable because SignalR could not be loaded.";
+                return;
+            }
+
+            const connection = new signalR.HubConnectionBuilder()
+                .withUrl("/hubs/dashboard")
+                .withAutomaticReconnect()
+                .build();
+
+            connection.on("ModuleGenerationProgress", progress => {
+                const progressIndex = this.generationProgress.findIndex(item => item.stage === progress.stage);
+                if (progressIndex === -1) {
+                    this.generationProgress.push(progress);
+                } else {
+                    this.generationProgress.splice(progressIndex, 1, progress);
+                }
+            });
+            connection.onreconnected(async () => await this.joinDashboard());
+
+            try {
+                await connection.start();
+                this.hubConnection = connection;
+                await this.joinDashboard();
+            } catch (error) {
+                this.error = "Live module-generation updates could not be connected.";
+            }
+        },
+        async joinDashboard() {
+            if (!this.hubConnection) return;
+
+            try {
+                await this.hubConnection.invoke("JoinDashboard");
+            } catch (error) {
+                this.error = "Live module-generation updates could not be connected.";
+            }
+        },
         async loadDashboard(refresh = false) {
             this.isLoading = true;
             this.error = "";
@@ -51,6 +92,7 @@ createApp({
         async createModule() {
             this.isCreating = true;
             this.error = "";
+            this.generationProgress = [];
             try {
                 const response = await fetch("/api/dashboard/modules", {
                     method: "POST",

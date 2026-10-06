@@ -602,6 +602,29 @@ button, textarea { font: inherit; }
     font: inherit;
 }
 
+.module-generation-progress {
+    border-top: 1px solid var(--line);
+    padding-top: 1rem;
+}
+
+.module-generation-progress > p { margin: 0; }
+
+.module-generation-progress ol {
+    display: grid;
+    gap: .5rem;
+    margin: .75rem 0 0;
+    padding-left: 1.5rem;
+}
+
+.module-generation-progress li {
+    display: grid;
+    gap: .15rem;
+    color: var(--muted);
+}
+
+.module-generation-progress li.complete { color: var(--navy); }
+.module-generation-progress li.failed { color: var(--error); }
+
 .module-statistics {
     margin-bottom: 2rem;
     padding: 1.5rem;

@@ -116,9 +116,11 @@ public sealed class CopilotModuleLoaderTests : IDisposable
             serviceProvider,
             Options.Create(new ModuleLoaderOptions { FolderName = "modules" }),
             NullLogger<CopilotModuleLoader>.Instance);
+        var notifier = new FakeDashboardModuleGenerationNotifier();
         var service = new CopilotModuleService(
             new GeneratedModuleCopilotService(),
             loader,
+            notifier,
             Options.Create(new ModuleLoaderOptions
             {
                 FolderName = "modules",
@@ -126,10 +128,13 @@ public sealed class CopilotModuleLoaderTests : IDisposable
                 MaxGenerationPromptLength = 100
             }));
 
-        var moduleFile = await service.CreateAsync("Show a delivery summary.", CancellationToken.None);
+        var moduleFile = await service.CreateAsync("octocat", "Show a delivery summary.", CancellationToken.None);
 
         Assert.Contains(moduleFile, loader.GetModuleFiles());
         Assert.Contains(loader.GetModules(), module => module.GetType().Name == "GeneratedModule");
+        Assert.Equal(
+            ["Validating", "Generating", "Compiling", "Deploying", "Complete"],
+            notifier.Progress.Select(progress => progress.Stage));
     }
 
     [Fact]
@@ -147,6 +152,7 @@ public sealed class CopilotModuleLoaderTests : IDisposable
         var service = new CopilotModuleService(
             new FakeCopilotService(),
             loader,
+            new FakeDashboardModuleGenerationNotifier(),
             Options.Create(new ModuleLoaderOptions
             {
                 FolderName = "modules",
@@ -207,9 +213,6 @@ public sealed class CopilotModuleLoaderTests : IDisposable
             CancellationToken cancellationToken) =>
             Task.FromResult(
                 """
-                using System.Collections.Generic;
-                using System.Threading;
-                using System.Threading.Tasks;
                 using SquadDemos.Web.CopilotDynamicModule.Features.Dashboard;
 
                 public sealed class GeneratedModule : ICopilotModule
@@ -217,13 +220,30 @@ public sealed class CopilotModuleLoaderTests : IDisposable
                     public int Order => 100;
 
                     public Task<string> GetGeneratedHtmlAsync(CancellationToken cancellationToken = default) =>
-                        Task.FromResult("<section>Generated module</section>");
+                        Task.FromResult(
+                            "Generated".Equals("generated", StringComparison.OrdinalIgnoreCase)
+                                ? "<section>Generated module</section>"
+                                : string.Empty);
 
                     public void SetConfiguration(KeyValuePair<string, string> configuration)
                     {
                     }
                 }
                 """);
+    }
+
+    private sealed class FakeDashboardModuleGenerationNotifier : IDashboardModuleGenerationNotifier
+    {
+        public List<DashboardModuleGenerationProgress> Progress { get; } = [];
+
+        public Task NotifyAsync(
+            string login,
+            DashboardModuleGenerationProgress progress,
+            CancellationToken cancellationToken)
+        {
+            Progress.Add(progress);
+            return Task.CompletedTask;
+        }
     }
 
     private sealed class TestWebHostEnvironment(string webRootPath) : IWebHostEnvironment

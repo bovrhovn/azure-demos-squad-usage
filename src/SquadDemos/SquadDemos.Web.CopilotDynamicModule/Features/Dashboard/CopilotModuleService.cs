@@ -10,7 +10,7 @@ public sealed record CreateDashboardModuleRequest(string Prompt);
 
 public interface ICopilotModuleService
 {
-    Task<string> CreateAsync(string prompt, CancellationToken cancellationToken);
+    Task<string> CreateAsync(string login, string prompt, CancellationToken cancellationToken);
 
     Task<string> UploadAsync(IFormFile moduleFile, CancellationToken cancellationToken);
 }
@@ -18,23 +18,50 @@ public interface ICopilotModuleService
 public sealed class CopilotModuleService(
     ICopilotService copilotService,
     ICopilotModuleLoader moduleLoader,
+    IDashboardModuleGenerationNotifier generationNotifier,
     IOptions<ModuleLoaderOptions> options) : ICopilotModuleService
 {
     private readonly ModuleLoaderOptions options = options.Value;
 
-    public async Task<string> CreateAsync(string prompt, CancellationToken cancellationToken)
+    public async Task<string> CreateAsync(string login, string prompt, CancellationToken cancellationToken)
     {
-        ValidatePrompt(prompt);
+        try
+        {
+            await NotifyAsync(login, "Validating", "Validating the module request.", cancellationToken);
+            ValidatePrompt(prompt);
 
-        var source = await copilotService.GetResponseAsync(
-            [new ChatMessage(Guid.NewGuid(), "user", CreateModulePrompt(prompt), DateTimeOffset.UtcNow)],
-            null,
-            cancellationToken);
+            await NotifyAsync(login, "Generating", "Asking Copilot to generate the module source.", cancellationToken);
+            var source = await copilotService.GetResponseAsync(
+                [new ChatMessage(Guid.NewGuid(), "user", CreateModulePrompt(prompt), DateTimeOffset.UtcNow)],
+                null,
+                cancellationToken);
 
-        var assembly = Compile(source);
-        var fileName = $"dashboard-module-{Guid.NewGuid():N}.dll";
-        await using var stream = new MemoryStream(assembly);
-        return await moduleLoader.SaveModuleAsync(stream, fileName, cancellationToken);
+            await NotifyAsync(login, "Compiling", "Compiling the generated C# source.", cancellationToken);
+            var assembly = Compile(AddRequiredUsings(source));
+            var fileName = $"dashboard-module-{Guid.NewGuid():N}.dll";
+
+            await NotifyAsync(login, "Deploying", "Validating and deploying the module assembly.", cancellationToken);
+            await using var stream = new MemoryStream(assembly);
+            var savedModule = await moduleLoader.SaveModuleAsync(stream, fileName, cancellationToken);
+            await NotifyAsync(
+                login,
+                "Complete",
+                $"Module {savedModule} was created and deployed.",
+                cancellationToken,
+                isComplete: true);
+            return savedModule;
+        }
+        catch (Exception)
+        {
+            await NotifyAsync(
+                login,
+                "Failed",
+                "Module creation did not complete. Review the error message for details.",
+                CancellationToken.None,
+                isComplete: true,
+                isError: true);
+            throw;
+        }
     }
 
     public async Task<string> UploadAsync(IFormFile moduleFile, CancellationToken cancellationToken)
@@ -113,15 +140,43 @@ public sealed class CopilotModuleService(
             .Select(path => MetadataReference.CreateFromFile(path));
     }
 
+    private Task NotifyAsync(
+        string login,
+        string stage,
+        string message,
+        CancellationToken cancellationToken,
+        bool isComplete = false,
+        bool isError = false) =>
+        generationNotifier.NotifyAsync(
+            login,
+            new DashboardModuleGenerationProgress(stage, message, isComplete, isError),
+            cancellationToken);
+
+    private static string AddRequiredUsings(string source) =>
+        """
+        using System;
+        using System.Collections.Generic;
+        using System.Threading;
+        using System.Threading.Tasks;
+
+        """ + source;
+
     private static string CreateModulePrompt(string prompt) =>
         $$"""
           Create exactly one public C# class that implements
           SquadDemos.Web.CopilotDynamicModule.Features.Dashboard.ICopilotModule.
 
+          Start the source with these using directives:
+          using System;
+          using System.Collections.Generic;
+          using System.Threading;
+          using System.Threading.Tasks;
+
           Return only compilable C# source. Do not use Markdown fences, package references, file access,
           networking, reflection, process execution, or dependency injection. The class must implement all
-          interface members, return a complete HTML fragment from GetGeneratedHtmlAsync, and use only .NET
-          APIs available from the shared runtime.
+          interface members, including GetGeneratedHtmlAsync(CancellationToken) and
+          SetConfiguration(KeyValuePair<string, string>). Return a complete HTML fragment from
+          GetGeneratedHtmlAsync, and use only .NET APIs available from the shared runtime.
 
           Dashboard request:
           {{prompt}}

@@ -29,6 +29,7 @@ app.MapControllers();
 app.MapChatFeatureApi();
 app.MapDashboardFeatureApi();
 app.MapHub<ChatHub>("/hubs/chat");
+app.MapHub<DashboardModuleGenerationHub>("/hubs/dashboard");
 
 app.Run();
 
