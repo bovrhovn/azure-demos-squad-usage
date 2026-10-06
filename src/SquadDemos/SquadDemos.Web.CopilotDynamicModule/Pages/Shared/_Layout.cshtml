@@ -1,7 +1,11 @@
-﻿@using SquadDemos.Web.CopilotDynamicModule.Features.Copilot
+﻿@using SquadDemos.Web.CopilotDynamicModule.Features.Chat
+@using SquadDemos.Web.CopilotDynamicModule.Features.Copilot
+@using Microsoft.Extensions.Options
 @inject ICopilotService Copilot
+@inject IOptions<ChatStorageOptions> ChatStorage
 @{
     var copilotStatus = await Copilot.GetAuthenticationStatusAsync(Context.RequestAborted);
+    var storageEnvironment = ChatStorageEnvironment.GetLabel(ChatStorage.Value.ConnectionString);
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -48,6 +52,7 @@
         <div class="page-frame">
             <span>Copilot Dynamic Module</span>
             <span>GitHub Copilot-backed developer workspace</span>
+            <span>Chat storage: Azure Cosmos DB (@storageEnvironment)</span>
         </div>
     </footer>
     @await RenderSectionAsync("Scripts", required: false)

@@ -8,7 +8,8 @@ public sealed class ChatHub(ICopilotService copilot, IChatService chatService) :
     public async Task JoinSession(Guid sessionId)
     {
         var status = await copilot.GetAuthenticationStatusAsync(Context.ConnectionAborted);
-        if (!status.IsAuthenticated || chatService.GetSession(status.Login!, sessionId) is null)
+        if (!status.IsAuthenticated ||
+            await chatService.GetSessionAsync(status.Login!, sessionId, Context.ConnectionAborted) is null)
         {
             throw new HubException("The requested chat session is unavailable.");
         }

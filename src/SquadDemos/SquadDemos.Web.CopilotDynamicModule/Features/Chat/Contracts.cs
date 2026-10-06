@@ -27,13 +27,35 @@ public interface ICopilotChatClient
 
 public interface IChatService
 {
-    IReadOnlyList<ChatSessionSummary> GetSessions(string userId);
+    Task<IReadOnlyList<ChatSessionSummary>> GetSessionsAsync(
+        string userId,
+        CancellationToken cancellationToken);
 
-    ChatSession? GetSession(string userId, Guid sessionId);
+    Task<ChatSession?> GetSessionAsync(
+        string userId,
+        Guid sessionId,
+        CancellationToken cancellationToken);
 
     Task<ChatSession> SendMessageAsync(
         string userId,
         SendChatMessageRequest request,
         string? model,
+        CancellationToken cancellationToken);
+}
+
+public interface IChatSessionStore
+{
+    Task<IReadOnlyList<ChatSession>> GetSessionsAsync(
+        string userId,
+        CancellationToken cancellationToken);
+
+    Task<ChatSession?> GetSessionAsync(
+        string userId,
+        Guid sessionId,
+        CancellationToken cancellationToken);
+
+    Task SaveSessionAsync(
+        string userId,
+        ChatSession session,
         CancellationToken cancellationToken);
 }

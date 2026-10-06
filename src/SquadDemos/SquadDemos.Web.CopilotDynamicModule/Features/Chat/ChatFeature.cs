@@ -1,3 +1,5 @@
+using Microsoft.Azure.Cosmos;
+using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Http.HttpResults;
 using SquadDemos.Web.CopilotDynamicModule.Features.Copilot;
 
@@ -7,6 +9,25 @@ public static class ChatFeature
 {
     public static IServiceCollection AddChatFeature(this IServiceCollection services, IConfiguration configuration)
     {
+        services.AddOptions<ChatStorageOptions>()
+            .Bind(configuration.GetSection(ChatStorageOptions.SectionName))
+            .Validate(
+                options => !string.IsNullOrWhiteSpace(options.ConnectionString),
+                "Cosmos:ConnectionString must be configured.")
+            .Validate(
+                options => !string.IsNullOrWhiteSpace(options.DatabaseName),
+                "Cosmos:DatabaseName must be configured.")
+            .Validate(
+                options => !string.IsNullOrWhiteSpace(options.ContainerName),
+                "Cosmos:ContainerName must be configured.")
+            .ValidateOnStart();
+        services.AddSingleton(provider =>
+        {
+            var options = provider.GetRequiredService<IOptions<ChatStorageOptions>>().Value;
+            return new CosmosClient(options.ConnectionString);
+        });
+        services.AddSingleton<IChatSessionStore, CosmosChatSessionStore>();
+        services.AddHostedService<CosmosChatStoreInitializer>();
         services.AddSingleton<IChatService, ChatService>();
         services.AddSingleton<IChatSessionNotifier, SignalRChatSessionNotifier>();
         services.AddSignalR();
@@ -25,7 +46,7 @@ public static class ChatFeature
         {
             var status = await copilot.GetAuthenticationStatusAsync(cancellationToken);
             return status.IsAuthenticated
-                ? TypedResults.Ok(chatService.GetSessions(status.Login!))
+                ? TypedResults.Ok(await chatService.GetSessionsAsync(status.Login!, cancellationToken))
                 : TypedResults.Problem("Authenticate with GitHub to use Copilot.", statusCode: StatusCodes.Status401Unauthorized);
         }).WithName("GetChatSessions").WithSummary("Gets the authenticated GitHub user's chat sessions.");
 
@@ -41,7 +62,7 @@ public static class ChatFeature
                 return TypedResults.Problem("Authenticate with GitHub to use Copilot.", statusCode: StatusCodes.Status401Unauthorized);
             }
 
-            var session = chatService.GetSession(status.Login!, sessionId);
+            var session = await chatService.GetSessionAsync(status.Login!, sessionId, cancellationToken);
             return session is null ? TypedResults.NotFound() : TypedResults.Ok(session);
         }).WithName("GetChatSession").WithSummary("Gets one chat session.");
 

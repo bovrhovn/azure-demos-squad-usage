@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Options;
+using Newtonsoft.Json.Linq;
 using SquadDemos.Web.CopilotDynamicModule.Features.Chat;
 using SquadDemos.Web.CopilotDynamicModule.Features.Dashboard;
 
@@ -11,7 +12,11 @@ public sealed class ChatAndModuleTests
     {
         var tokenUsage = new ChatTokenUsage(24, 12, 8);
         var notifier = new FakeChatSessionNotifier();
-        var service = new ChatService(new FakeCopilotChatClient("Hello from Copilot.", tokenUsage), notifier);
+        var store = new InMemoryChatSessionStore();
+        var service = new ChatService(
+            new FakeCopilotChatClient("Hello from Copilot.", tokenUsage),
+            notifier,
+            store);
 
         var session = await service.SendMessageAsync(
             "user-1",
@@ -28,8 +33,63 @@ public sealed class ChatAndModuleTests
                 Assert.Equal(("assistant", "Hello from Copilot."), (message.Role, message.Content));
                 Assert.Equal(tokenUsage, message.TokenUsage);
             });
-        Assert.Equal(session.Id, Assert.Single(service.GetSessions("user-1")).Id);
+        Assert.Equal(
+            session.Id,
+            Assert.Single(await service.GetSessionsAsync("user-1", CancellationToken.None)).Id);
         Assert.Equal(session, Assert.Single(notifier.UpdatedSessions));
+    }
+
+    [Fact]
+    public async Task SendMessageAsync_persists_sessions_for_a_new_chat_service_instance()
+    {
+        var store = new InMemoryChatSessionStore();
+        var session = await new ChatService(
+            new FakeCopilotChatClient("Initial response."),
+            new FakeChatSessionNotifier(),
+            store)
+            .SendMessageAsync(
+                "user-1",
+                new SendChatMessageRequest(null, "Persist this conversation."),
+                null,
+                CancellationToken.None);
+
+        var reloadedService = new ChatService(
+            new FakeCopilotChatClient("Unused response."),
+            new FakeChatSessionNotifier(),
+            store);
+        var persisted = await reloadedService.GetSessionAsync(
+            "user-1",
+            session.Id,
+            CancellationToken.None);
+
+        Assert.Equal(session, persisted);
+    }
+
+    [Fact]
+    public void CosmosChatSessionDocument_uses_the_user_id_as_the_partition_key()
+    {
+        var session = new ChatSession(
+            Guid.Parse("11111111-1111-1111-1111-111111111111"),
+            "Persisted conversation",
+            DateTimeOffset.Parse("2026-01-01T00:00:00+00:00"),
+            []);
+
+        var document = CosmosChatSessionDocument.From("octocat", session);
+        var serialized = JObject.FromObject(document);
+
+        Assert.Equal(session.Id.ToString("D"), serialized.Value<string>("id"));
+        Assert.Equal("octocat", serialized.Value<string>("userId"));
+        Assert.Equal(session, document.ToChatSession());
+    }
+
+    [Theory]
+    [InlineData("AccountEndpoint=https://localhost:8081/;AccountKey=emulator-key;", "LOCAL")]
+    [InlineData("AccountEndpoint=https://example.documents.azure.com:443/;AccountKey=production-key;", "PRODUCTION")]
+    public void ChatStorageEnvironment_labels_the_Cosmos_emulator_as_local(
+        string connectionString,
+        string expectedLabel)
+    {
+        Assert.Equal(expectedLabel, ChatStorageEnvironment.GetLabel(connectionString));
     }
 
     [Fact]
@@ -68,6 +128,37 @@ public sealed class ChatAndModuleTests
         public Task NotifySessionUpdatedAsync(ChatSession session, CancellationToken cancellationToken)
         {
             UpdatedSessions.Add(session);
+            return Task.CompletedTask;
+        }
+
+    }
+
+    private sealed class InMemoryChatSessionStore : IChatSessionStore
+    {
+        private readonly Dictionary<(string UserId, Guid SessionId), ChatSession> sessions = [];
+
+        public Task<IReadOnlyList<ChatSession>> GetSessionsAsync(
+            string userId,
+            CancellationToken cancellationToken) =>
+            Task.FromResult<IReadOnlyList<ChatSession>>(
+                sessions
+                    .Where(entry => entry.Key.UserId == userId)
+                    .Select(entry => entry.Value)
+                    .ToArray());
+
+        public Task<ChatSession?> GetSessionAsync(
+            string userId,
+            Guid sessionId,
+            CancellationToken cancellationToken) =>
+            Task.FromResult(
+                sessions.GetValueOrDefault((userId, sessionId)));
+
+        public Task SaveSessionAsync(
+            string userId,
+            ChatSession session,
+            CancellationToken cancellationToken)
+        {
+            sessions[(userId, session.Id)] = session;
             return Task.CompletedTask;
         }
     }
