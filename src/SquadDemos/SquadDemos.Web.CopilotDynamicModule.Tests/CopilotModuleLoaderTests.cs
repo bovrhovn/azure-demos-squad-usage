@@ -65,6 +65,9 @@ public sealed class CopilotModuleLoaderTests : IDisposable
         Directory.CreateDirectory(modulesPath);
         var assemblyPath = Path.Combine(modulesPath, "TestModule.dll");
         File.Copy(typeof(DiskModule).Assembly.Location, assemblyPath);
+        var sourcePath = Path.Combine(webRootPath, "modules-code", "TestModule.cs");
+        Directory.CreateDirectory(Path.GetDirectoryName(sourcePath)!);
+        File.WriteAllText(sourcePath, "// module source");
 
         using var serviceProvider = new ServiceCollection()
             .AddSingleton<ICopilotService>(new FakeCopilotService())
@@ -83,6 +86,7 @@ public sealed class CopilotModuleLoaderTests : IDisposable
         Assert.True(loader.DeleteModule("TestModule.dll"));
 
         Assert.Empty(loader.GetModuleFiles());
+        Assert.False(File.Exists(sourcePath));
         Assert.DoesNotContain(loader.GetModules(), module => module.GetType().FullName == typeof(DiskModule).FullName);
     }
 
@@ -132,6 +136,9 @@ public sealed class CopilotModuleLoaderTests : IDisposable
 
         Assert.Contains(moduleFile, loader.GetModuleFiles());
         Assert.Contains(loader.GetModules(), module => module.GetType().Name == "GeneratedModule");
+        var sourcePath = Path.Combine(webRootPath, "modules-code", Path.ChangeExtension(moduleFile, ".cs"));
+        Assert.True(File.Exists(sourcePath));
+        Assert.Contains("StringComparison.OrdinalIgnoreCase", await File.ReadAllTextAsync(sourcePath));
         Assert.Equal(
             ["Validating", "Generating", "Compiling", "Deploying", "Complete"],
             notifier.Progress.Select(progress => progress.Stage));

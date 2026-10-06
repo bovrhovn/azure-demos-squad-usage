@@ -16,6 +16,7 @@
 
   <ItemGroup>
     <Folder Include="Pages\Profile\" />
+    <Folder Include="wwwroot\modules-code\" />
   </ItemGroup>
 
 </Project>

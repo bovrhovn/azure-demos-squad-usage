@@ -52,6 +52,9 @@ public static class DashboardFeature
         services.AddOptions<ModuleLoaderOptions>()
             .Bind(configuration.GetSection(ModuleLoaderOptions.SectionName))
             .Validate(
+                options => !string.IsNullOrWhiteSpace(options.SourceFolderName),
+                "Modules:SourceFolderName must be configured.")
+            .Validate(
                 options => options.MaxModuleFileSizeBytes > 0,
                 "Modules:MaxModuleFileSizeBytes must be greater than zero.")
             .Validate(

@@ -192,7 +192,8 @@ public sealed class ChatAndModuleTests
         public Task<string> SaveModuleAsync(
             Stream assemblyStream,
             string moduleFileName,
-            CancellationToken cancellationToken) =>
+            CancellationToken cancellationToken,
+            string? source = null) =>
             Task.FromResult(moduleFileName);
 
         public void Refresh()

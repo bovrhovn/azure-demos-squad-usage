@@ -37,12 +37,17 @@ public sealed class CopilotModuleService(
                 cancellationToken);
 
             await NotifyAsync(login, "Compiling", "Compiling the generated C# source.", cancellationToken);
-            var assembly = Compile(AddRequiredUsings(source));
+            var compilationSource = AddRequiredUsings(source);
+            var assembly = Compile(compilationSource);
             var fileName = $"dashboard-module-{Guid.NewGuid():N}.dll";
 
             await NotifyAsync(login, "Deploying", "Validating and deploying the module assembly.", cancellationToken);
             await using var stream = new MemoryStream(assembly);
-            var savedModule = await moduleLoader.SaveModuleAsync(stream, fileName, cancellationToken);
+            var savedModule = await moduleLoader.SaveModuleAsync(
+                stream,
+                fileName,
+                cancellationToken,
+                compilationSource);
             await NotifyAsync(
                 login,
                 "Complete",

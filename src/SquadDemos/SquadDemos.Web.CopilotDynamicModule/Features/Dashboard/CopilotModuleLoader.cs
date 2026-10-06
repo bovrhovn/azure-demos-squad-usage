@@ -11,6 +11,8 @@ public sealed class ModuleLoaderOptions
 
     public string FolderName { get; init; } = string.Empty;
 
+    public string SourceFolderName { get; init; } = "modules-code";
+
     public long MaxModuleFileSizeBytes { get; init; }
 
     public int MaxGenerationPromptLength { get; init; }
@@ -27,7 +29,8 @@ public interface ICopilotModuleLoader
     Task<string> SaveModuleAsync(
         Stream assemblyStream,
         string moduleFileName,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        string? source = null);
 
     void Refresh();
 }
@@ -47,12 +50,15 @@ public sealed class CopilotModuleLoader : ICopilotModuleLoader, IDisposable
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(environment.WebRootPath);
         ArgumentException.ThrowIfNullOrWhiteSpace(options.Value.FolderName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(options.Value.SourceFolderName);
 
         Cache = cache;
         ServiceProvider = serviceProvider;
         Logger = logger;
         ModuleFolderPath = GetModuleFolderPath(environment.WebRootPath, options.Value.FolderName);
+        ModuleSourceFolderPath = GetModuleFolderPath(environment.WebRootPath, options.Value.SourceFolderName);
         Directory.CreateDirectory(ModuleFolderPath);
+        Directory.CreateDirectory(ModuleSourceFolderPath);
 
         watcher = new FileSystemWatcher(ModuleFolderPath, "*.dll")
         {
@@ -73,6 +79,8 @@ public sealed class CopilotModuleLoader : ICopilotModuleLoader, IDisposable
     private ILogger<CopilotModuleLoader> Logger { get; }
 
     private string ModuleFolderPath { get; }
+
+    private string ModuleSourceFolderPath { get; }
 
     public IReadOnlyList<ICopilotModule> GetModules()
     {
@@ -120,6 +128,12 @@ public sealed class CopilotModuleLoader : ICopilotModuleLoader, IDisposable
         }
 
         File.Delete(assemblyPath);
+        var sourcePath = GetModuleSourcePath(moduleFileName);
+        if (File.Exists(sourcePath))
+        {
+            File.Delete(sourcePath);
+        }
+
         Refresh();
         Logger.LogInformation("Deleted Copilot module {ModuleFileName}.", moduleFileName);
         return true;
@@ -128,7 +142,8 @@ public sealed class CopilotModuleLoader : ICopilotModuleLoader, IDisposable
     public async Task<string> SaveModuleAsync(
         Stream assemblyStream,
         string moduleFileName,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? source = null)
     {
         ArgumentNullException.ThrowIfNull(assemblyStream);
 
@@ -146,6 +161,10 @@ public sealed class CopilotModuleLoader : ICopilotModuleLoader, IDisposable
         }
 
         var temporaryPath = Path.Combine(ModuleFolderPath, $".{Guid.NewGuid():N}.tmp");
+        var sourcePath = source is null ? null : GetModuleSourcePath(moduleFileName);
+        var temporarySourcePath = source is null
+            ? null
+            : Path.Combine(ModuleSourceFolderPath, $".{Guid.NewGuid():N}.tmp");
         try
         {
             await using (var destination = File.Create(temporaryPath))
@@ -160,7 +179,31 @@ public sealed class CopilotModuleLoader : ICopilotModuleLoader, IDisposable
                     nameof(assemblyStream));
             }
 
-            File.Move(temporaryPath, destinationPath);
+            if (source is not null)
+            {
+                if (File.Exists(sourcePath!))
+                {
+                    throw new ArgumentException("A generated source file already exists for this module.", nameof(moduleFileName));
+                }
+
+                await File.WriteAllTextAsync(temporarySourcePath!, source, cancellationToken);
+                File.Move(temporarySourcePath!, sourcePath!);
+            }
+
+            try
+            {
+                File.Move(temporaryPath, destinationPath);
+            }
+            catch
+            {
+                if (sourcePath is not null && File.Exists(sourcePath))
+                {
+                    File.Delete(sourcePath);
+                }
+
+                throw;
+            }
+
             Refresh();
             Logger.LogInformation("Saved Copilot module {ModuleFileName}.", moduleFileName);
             return moduleFileName;
@@ -170,6 +213,11 @@ public sealed class CopilotModuleLoader : ICopilotModuleLoader, IDisposable
             if (File.Exists(temporaryPath))
             {
                 File.Delete(temporaryPath);
+            }
+
+            if (temporarySourcePath is not null && File.Exists(temporarySourcePath))
+            {
+                File.Delete(temporarySourcePath);
             }
         }
     }
@@ -276,6 +324,9 @@ public sealed class CopilotModuleLoader : ICopilotModuleLoader, IDisposable
 
         return moduleFolder;
     }
+
+    private string GetModuleSourcePath(string moduleFileName) =>
+        Path.Combine(ModuleSourceFolderPath, Path.ChangeExtension(moduleFileName, ".cs"));
 
     private void OnModuleFileChanged(object sender, FileSystemEventArgs eventArgs)
     {
