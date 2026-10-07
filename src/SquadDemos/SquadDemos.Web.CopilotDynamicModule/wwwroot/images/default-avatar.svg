@@ -1,5 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" role="img" aria-label="Default avatar">
-  <rect width="80" height="80" fill="#334155"/>
-  <circle cx="40" cy="29" r="15" fill="#cbd5e1"/>
-  <path d="M12 76c3-18 15-28 28-28s25 10 28 28" fill="#cbd5e1"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" aria-label="Default avatar" role="img" viewBox="0 0 80 80"><rect width="80" height="80" fill="#334155"/><circle cx="40" cy="29" r="15" fill="#cbd5e1"/><path fill="#cbd5e1" d="M12 76c3-18 15-28 28-28s25 10 28 28"/></svg>
