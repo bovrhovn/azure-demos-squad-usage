@@ -10,15 +10,38 @@
                 <p class="eyebrow">CONVERSATIONS</p>
                 <h1>Chats</h1>
             </div>
-            <button type="button" class="new-chat" @@click="startNewChat">New chat</button>
+            <button type="button" class="new-chat" v-on:click="startNewChat">New chat</button>
         </div>
         <p v-if="sessions.length === 0" class="empty-state">Start a conversation to create a session.</p>
-        <button v-for="session in sessions" :key="session.id" type="button" class="session-item"
-                :class="{ active: selectedSessionId === session.id }" @@click="selectSession(session.id)">
-            <span>{{ session.title }}</span>
-            <small>{{ formatDate(session.updatedAt) }}</small>
-        </button>
+        <div v-for="session in sessions" :key="session.id" class="session-item"
+             :class="{ active: selectedSessionId === session.id }">
+            <button type="button" class="session-select" v-on:click="selectSession(session.id)">
+                <span>{{ session.title }}</span>
+                <small>{{ formatDate(session.updatedAt) }}</small>
+            </button>
+            <button type="button" class="delete-session" v-on:click="openDeleteDialog(session)"
+                    :aria-label="`Delete ${session.title}`" title="Delete chat">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M9 3h6l1 2h4v2H4V5h4l1-2Zm-3 6h12l-1 12H7L6 9Zm3 2v8h2v-8H9Zm4 0v8h2v-8h-2Z" />
+                </svg>
+            </button>
+        </div>
     </aside>
+    <dialog ref="deleteDialog" class="delete-dialog">
+        <form v-on:submit.prevent="deleteSession">
+            <h2>Delete chat?</h2>
+            <p>
+                Delete "{{ sessionPendingDeletion?.title }}" and all messages in this conversation?
+                This cannot be undone.
+            </p>
+            <div class="dialog-actions">
+                <button type="button" v-on:click="closeDeleteDialog">Cancel</button>
+                <button type="submit" class="delete-module" :disabled="isDeletingSession">
+                    {{ isDeletingSession ? 'Deleting...' : 'Delete chat' }}
+                </button>
+            </div>
+        </form>
+    </dialog>
     <section class="conversation-panel" aria-live="polite">
         <header class="conversation-heading">
             <p class="eyebrow">GITHUB COPILOT ASSISTANT</p>
@@ -37,27 +60,27 @@
                     <p>{{ message.content }}</p>
                     <template v-if="message.role === 'assistant'">
                         <div class="agent-message-actions">
-                            <button type="button" class="copy-message" @@click="copyMessage(message)"
+                            <button type="button" class="copy-message" v-on:click="copyMessage(message)"
                                     :aria-label="`Copy agent response`">
                                 {{ copiedMessageId === message.id ? 'Copied' : 'Copy' }}
                             </button>
                         </div>
                         <p class="token-usage">{{ formatTokenUsage(message.tokenUsage) }}</p>
+                        <p v-if="message.skills?.length" class="used-skills">
+                            Skills used:
+                            <a v-for="skill in message.skills" :key="skill.url" :href="skill.url"
+                               target="_blank" rel="noopener noreferrer">{{ skill.name }}</a>
+                        </p>
                     </template>
                 </div>
             </article>
         </div>
-        <form class="composer" @@submit.prevent="sendMessage">
+        <form class="composer" v-on:submit.prevent="sendMessage">
             <label class="visually-hidden" for="message">Message</label>
             <textarea id="message" v-model.trim="message" rows="3" placeholder="Ask anything..."
-                      :disabled="isSending" @@keydown.enter.exact.prevent="sendMessage"></textarea>
-            <button type="submit" :disabled="isSending || !message"
-                    :aria-label="isSending ? 'Sending message' : 'Send message'">
-                <svg class="send-icon" viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M21.4 2.6 3.9 9.3a1 1 0 0 0 .1 1.9l7 2.2 2.2 7a1 1 0 0 0 1.9.1l6.7-17.5a1 1 0 0 0-.4-1.4ZM14.1 17l-1.3-4.2L17 8.6l-4.2 4.2L8.6 11.5l9-3.4-3.5 8.9Z" />
-                </svg>
-            </button>
+                      :disabled="isSending" v-on:keydown.enter.prevent="sendMessage"></textarea>
         </form>
+        <p v-if="messageStatus" class="message-status" role="status">{{ messageStatus }}</p>
         <p v-if="error" class="error-message" role="alert">{{ error }}</p>
     </section>
 </div>
@@ -65,5 +88,5 @@
 @section Scripts {
     <script src="~/js/vue.global.prod.js"></script>
     <script src="~/js/signalr.min.js"></script>
-    <script src="~/js/chat.js"></script>
+    <script src="~/js/chat.js" asp-append-version="true"></script>
 }

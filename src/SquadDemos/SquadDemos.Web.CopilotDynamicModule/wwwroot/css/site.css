@@ -504,10 +504,9 @@ button, textarea { font: inherit; }
 }
 
 .session-item {
-    display: block;
+    display: flex;
     width: 100%;
     margin-top: .55rem;
-    padding: .7rem .75rem;
     border: 0;
     border-left: .2rem solid transparent;
     background: transparent;
@@ -517,20 +516,52 @@ button, textarea { font: inherit; }
     transition: background .16s ease, border-color .16s ease;
 }
 
-.session-item.active, .session-item:hover {
+.session-item.active, .session-item:has(.session-select:hover) {
     border-left-color: var(--blue);
     background: #fff;
 }
 
-.session-item span, .session-item small {
+.session-select {
+    flex: 1;
+    min-width: 0;
+    padding: .7rem .75rem;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    text-align: left;
+}
+
+.session-select span, .session-select small {
     display: block;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.session-item span { font-size: .9rem; font-weight: 750; }
-.session-item small { margin-top: .18rem; color: var(--muted); font-size: .7rem; }
+.session-select span { font-size: .9rem; font-weight: 750; }
+.session-select small { margin-top: .18rem; color: var(--muted); font-size: .7rem; }
+
+.delete-session {
+    align-self: center;
+    margin-right: .5rem;
+    padding: .35rem;
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+}
+
+.delete-session:hover, .delete-session:focus-visible {
+    color: var(--error);
+}
+
+.delete-session svg {
+    display: block;
+    width: 1rem;
+    height: 1rem;
+    fill: currentColor;
+}
 
 .conversation-panel {
     display: grid;
@@ -656,10 +687,36 @@ button, textarea { font: inherit; }
     white-space: normal !important;
 }
 
+.used-skills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .25rem .5rem;
+    align-items: baseline;
+    margin-top: .35rem !important;
+    color: var(--muted);
+    font-family: Bahnschrift, "Trebuchet MS", sans-serif !important;
+    font-size: .7rem;
+    line-height: 1.35 !important;
+    white-space: normal !important;
+}
+
+.used-skills a {
+    color: var(--blue);
+    font-weight: 700;
+}
+
+.used-skills a:hover, .used-skills a:focus-visible {
+    color: var(--blue-dark);
+}
+
+.message-status {
+    margin: 0 2rem 1rem;
+    color: var(--muted);
+    font-size: .82rem;
+    font-weight: 700;
+}
+
 .composer {
-    display: grid;
-    grid-template-columns: minmax(0, 4fr) minmax(0, 1fr);
-    gap: .75rem;
     padding: 1rem 2rem 1.25rem;
     border-top: 1px solid var(--line);
     background: #fff;
@@ -678,6 +735,9 @@ button, textarea { font: inherit; }
 }
 
 .composer textarea {
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
     min-height: 3.2rem;
     resize: vertical;
     border: 1px solid #9badc1;

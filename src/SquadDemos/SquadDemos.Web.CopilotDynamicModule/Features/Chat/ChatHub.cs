@@ -5,6 +5,20 @@ namespace SquadDemos.Web.CopilotDynamicModule.Features.Chat;
 
 public sealed class ChatHub(ICopilotService copilot, IChatService chatService) : Hub
 {
+    public async Task Subscribe()
+    {
+        var status = await copilot.GetAuthenticationStatusAsync(Context.ConnectionAborted);
+        if (!status.IsAuthenticated)
+        {
+            throw new HubException("Authenticate with GitHub to use chat updates.");
+        }
+
+        await Groups.AddToGroupAsync(
+            Context.ConnectionId,
+            UserGroup(status.Login!),
+            Context.ConnectionAborted);
+    }
+
     public async Task JoinSession(Guid sessionId)
     {
         var status = await copilot.GetAuthenticationStatusAsync(Context.ConnectionAborted);
@@ -21,4 +35,6 @@ public sealed class ChatHub(ICopilotService copilot, IChatService chatService) :
         Groups.RemoveFromGroupAsync(Context.ConnectionId, SessionGroup(sessionId), Context.ConnectionAborted);
 
     public static string SessionGroup(Guid sessionId) => $"chat-session-{sessionId}";
+
+    public static string UserGroup(string userId) => $"chat-user-{userId}";
 }

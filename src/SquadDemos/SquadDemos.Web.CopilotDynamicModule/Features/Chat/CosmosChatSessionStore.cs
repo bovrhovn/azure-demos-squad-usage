@@ -99,6 +99,25 @@ public sealed class CosmosChatSessionStore(
             new PartitionKey(userId),
             cancellationToken: cancellationToken);
 
+    public async Task<bool> DeleteSessionAsync(
+        string userId,
+        Guid sessionId,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await GetContainer().DeleteItemAsync<CosmosChatSessionDocument>(
+                sessionId.ToString("D"),
+                new PartitionKey(userId),
+                cancellationToken: cancellationToken);
+            return true;
+        }
+        catch (CosmosException exception) when (exception.StatusCode == HttpStatusCode.NotFound)
+        {
+            return false;
+        }
+    }
+
     private Container GetContainer() =>
         cosmosClient.GetContainer(options.DatabaseName, options.ContainerName);
 }

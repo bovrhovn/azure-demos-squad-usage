@@ -9,7 +9,10 @@ createApp({
             message: "",
             isSending: false,
             error: "",
+            messageStatus: "",
             copiedMessageId: null,
+            sessionPendingDeletion: null,
+            isDeletingSession: false,
             hubConnection: null
         };
     },
@@ -37,11 +40,18 @@ createApp({
                 this.sessions = [{ id: session.id, title: session.title, updatedAt: session.updatedAt },
                     ...this.sessions.filter(item => item.id !== session.id)];
             });
+            connection.on("MessageStatusUpdated", status => {
+                if (!this.selectedSessionId || this.selectedSessionId === status.sessionId) {
+                    this.messageStatus = status.message;
+                }
+            });
+            connection.on("SessionDeleted", sessionId => this.handleSessionDeleted(sessionId));
             connection.onreconnected(async () => await this.joinSelectedSession());
 
             try {
                 await connection.start();
                 this.hubConnection = connection;
+                await connection.invoke("Subscribe");
             } catch (error) {
                 this.error = "Live chat updates could not be connected.";
             }
@@ -75,6 +85,7 @@ createApp({
             this.selectedSessionId = null;
             this.message = "";
             this.error = "";
+            this.messageStatus = "";
             this.copiedMessageId = null;
         },
         async joinSelectedSession() {
@@ -112,6 +123,7 @@ createApp({
                 this.selectedSession = session;
                 this.selectedSessionId = session.id;
                 this.message = "";
+                this.messageStatus = "";
                 this.sessions = [{ id: session.id, title: session.title, updatedAt: session.updatedAt },
                     ...this.sessions.filter(item => item.id !== session.id)];
             } catch (error) {
@@ -119,6 +131,46 @@ createApp({
             } finally {
                 this.isSending = false;
             }
+        },
+        openDeleteDialog(session) {
+            this.sessionPendingDeletion = session;
+            this.$refs.deleteDialog.showModal();
+        },
+        closeDeleteDialog() {
+            this.$refs.deleteDialog.close();
+            this.sessionPendingDeletion = null;
+        },
+        async deleteSession() {
+            if (!this.sessionPendingDeletion) return;
+
+            this.isDeletingSession = true;
+            this.error = "";
+            try {
+                const response = await fetch(
+                    `/api/chat/sessions/${this.sessionPendingDeletion.id}`,
+                    { method: "DELETE" });
+                if (!response.ok) {
+                    throw new Error("The chat could not be deleted. Refresh the page and try again.");
+                }
+
+                this.handleSessionDeleted(this.sessionPendingDeletion.id);
+                this.closeDeleteDialog();
+            } catch (error) {
+                this.error = error.message;
+            } finally {
+                this.isDeletingSession = false;
+            }
+        },
+        handleSessionDeleted(sessionId) {
+            if (this.selectedSessionId === sessionId) {
+                this.leaveSession(sessionId);
+                this.selectedSession = null;
+                this.selectedSessionId = null;
+                this.messageStatus = "";
+                this.copiedMessageId = null;
+            }
+
+            this.sessions = this.sessions.filter(session => session.id !== sessionId);
         },
         async readJson(response) {
             const body = await response.json();

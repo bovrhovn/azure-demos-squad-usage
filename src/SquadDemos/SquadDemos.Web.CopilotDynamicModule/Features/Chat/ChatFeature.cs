@@ -71,6 +71,23 @@ public static class ChatFeature
             return session is null ? TypedResults.NotFound() : TypedResults.Ok(session);
         }).WithName("GetChatSession").WithSummary("Gets one chat session.");
 
+        group.MapDelete("/sessions/{sessionId:guid}", async Task<Results<NoContent, NotFound, ProblemHttpResult>> (
+            Guid sessionId,
+            ICopilotService copilot,
+            IChatService chatService,
+            CancellationToken cancellationToken) =>
+        {
+            var status = await copilot.GetAuthenticationStatusAsync(cancellationToken);
+            if (!status.IsAuthenticated)
+            {
+                return TypedResults.Problem("Authenticate with GitHub to use Copilot.", statusCode: StatusCodes.Status401Unauthorized);
+            }
+
+            return await chatService.DeleteSessionAsync(status.Login!, sessionId, cancellationToken)
+                ? TypedResults.NoContent()
+                : TypedResults.NotFound();
+        }).WithName("DeleteChatSession").WithSummary("Deletes a chat session and all of its messages.");
+
         group.MapPost("/messages", async Task<Results<Ok<ChatSession>, ValidationProblem, NotFound, ProblemHttpResult>> (
             SendChatMessageRequest request,
             HttpRequest httpRequest,

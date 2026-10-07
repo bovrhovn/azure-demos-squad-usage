@@ -11,10 +11,11 @@ public sealed class ChatAndModuleTests
     public async Task SendMessageAsync_creates_a_session_and_keeps_conversation_history()
     {
         var tokenUsage = new ChatTokenUsage(24, 12, 8);
+        var skills = new[] { new ChatSkill("review-code", "/skills/review-code/SKILL.md") };
         var notifier = new FakeChatSessionNotifier();
         var store = new InMemoryChatSessionStore();
         var service = new ChatService(
-            new FakeCopilotChatClient("Hello from Copilot.", tokenUsage),
+            new FakeCopilotChatClient("Hello from Copilot.", tokenUsage, skills),
             notifier,
             store);
 
@@ -32,11 +33,19 @@ public sealed class ChatAndModuleTests
             {
                 Assert.Equal(("assistant", "Hello from Copilot."), (message.Role, message.Content));
                 Assert.Equal(tokenUsage, message.TokenUsage);
+                Assert.Equal(skills, message.Skills);
             });
         Assert.Equal(
             session.Id,
             Assert.Single(await service.GetSessionsAsync("user-1", CancellationToken.None)).Id);
         Assert.Equal(session, Assert.Single(notifier.UpdatedSessions));
+        Assert.Collection(
+            notifier.MessageStatuses,
+            status => Assert.Equal((session.Id, "Message received."), (status.SessionId, status.Message)),
+            status => Assert.Equal(
+                (session.Id, "Waiting for GitHub Copilot to respond..."),
+                (status.SessionId, status.Message)),
+            status => Assert.Equal((session.Id, "GitHub Copilot responded."), (status.SessionId, status.Message)));
     }
 
     [Fact]
@@ -63,6 +72,27 @@ public sealed class ChatAndModuleTests
             CancellationToken.None);
 
         Assert.Equal(session, persisted);
+    }
+
+    [Fact]
+    public async Task DeleteSessionAsync_removes_the_session_and_notifies_the_user()
+    {
+        var notifier = new FakeChatSessionNotifier();
+        var service = new ChatService(
+            new FakeCopilotChatClient("Response."),
+            notifier,
+            new InMemoryChatSessionStore());
+        var session = await service.SendMessageAsync(
+            "user-1",
+            new SendChatMessageRequest(null, "Delete this conversation."),
+            null,
+            CancellationToken.None);
+
+        var deleted = await service.DeleteSessionAsync("user-1", session.Id, CancellationToken.None);
+
+        Assert.True(deleted);
+        Assert.Null(await service.GetSessionAsync("user-1", session.Id, CancellationToken.None));
+        Assert.Equal(("user-1", session.Id), Assert.Single(notifier.DeletedSessions));
     }
 
     [Fact]
@@ -112,22 +142,45 @@ public sealed class ChatAndModuleTests
             module => Assert.Equal((20, "TestModule", "<section>second-dashboard</section>"), (module.Order, module.Name, module.Html)));
     }
 
-    private sealed class FakeCopilotChatClient(string response, ChatTokenUsage? tokenUsage = null) : ICopilotChatClient
+    private sealed class FakeCopilotChatClient(
+        string response,
+        ChatTokenUsage? tokenUsage = null,
+        IReadOnlyList<ChatSkill>? skills = null) : ICopilotChatClient
     {
         public Task<CopilotChatResponse> GetResponseAsync(
             IReadOnlyList<ChatMessage> messages,
             string? model,
             CancellationToken cancellationToken) =>
-            Task.FromResult(new CopilotChatResponse(response, tokenUsage));
+            Task.FromResult(new CopilotChatResponse(response, tokenUsage, skills));
     }
 
     private sealed class FakeChatSessionNotifier : IChatSessionNotifier
     {
         public List<ChatSession> UpdatedSessions { get; } = [];
+        public List<ChatMessageStatus> MessageStatuses { get; } = [];
+        public List<(string UserId, Guid SessionId)> DeletedSessions { get; } = [];
 
         public Task NotifySessionUpdatedAsync(ChatSession session, CancellationToken cancellationToken)
         {
             UpdatedSessions.Add(session);
+            return Task.CompletedTask;
+        }
+
+        public Task NotifyMessageStatusAsync(
+            string userId,
+            ChatMessageStatus status,
+            CancellationToken cancellationToken)
+        {
+            MessageStatuses.Add(status);
+            return Task.CompletedTask;
+        }
+
+        public Task NotifySessionDeletedAsync(
+            string userId,
+            Guid sessionId,
+            CancellationToken cancellationToken)
+        {
+            DeletedSessions.Add((userId, sessionId));
             return Task.CompletedTask;
         }
 
@@ -161,6 +214,12 @@ public sealed class ChatAndModuleTests
             sessions[(userId, session.Id)] = session;
             return Task.CompletedTask;
         }
+
+        public Task<bool> DeleteSessionAsync(
+            string userId,
+            Guid sessionId,
+            CancellationToken cancellationToken) =>
+            Task.FromResult(sessions.Remove((userId, sessionId)));
     }
 
     private sealed class TestModule(int order, string name) : ICopilotModule

@@ -163,12 +163,24 @@ public sealed class GitHubCopilotService(
             }, cancellationToken);
 
             ChatTokenUsage? tokenUsage = null;
+            var availableSkills = skillStore.GetSkills()
+                .ToDictionary(skill => skill.Name, StringComparer.OrdinalIgnoreCase);
+            var invokedSkills = new List<ChatSkill>();
             using var usageSubscription = session.On<AssistantUsageEvent>(usageEvent =>
             {
                 tokenUsage = new ChatTokenUsage(
                     usageEvent.Data.InputTokens,
                     usageEvent.Data.OutputTokens,
                     usageEvent.Data.ReasoningTokens);
+            });
+            using var skillSubscription = session.On<SkillInvokedEvent>(skillEvent =>
+            {
+                if (availableSkills.TryGetValue(skillEvent.Data.Name, out var skill)
+                    && invokedSkills.All(invokedSkill =>
+                        !string.Equals(invokedSkill.Name, skill.Name, StringComparison.OrdinalIgnoreCase)))
+                {
+                    invokedSkills.Add(new ChatSkill(skill.Name, GetSkillUrl(skill.Name)));
+                }
             });
 
             var response = await session.SendAndWaitAsync(
@@ -180,7 +192,8 @@ public sealed class GitHubCopilotService(
 
             return new CopilotChatResponse(
                 content,
-                tokenUsage ?? new ChatTokenUsage(null, response.Data.OutputTokens, null));
+                tokenUsage ?? new ChatTokenUsage(null, response.Data.OutputTokens, null),
+                invokedSkills);
         }
         catch (CopilotRequestException)
         {
@@ -223,6 +236,17 @@ public sealed class GitHubCopilotService(
             GitHubToken = accessToken,
             UseLoggedInUser = false
         });
+
+    private string GetSkillUrl(string skillName)
+    {
+        var skillFolderPath = string.Join(
+            "/",
+            options.SkillsFolderName
+                .Split(['/', '\\'], StringSplitOptions.RemoveEmptyEntries)
+                .Select(Uri.EscapeDataString));
+
+        return $"/{skillFolderPath}/{Uri.EscapeDataString(skillName)}/SKILL.md";
+    }
 
     private static string FormatConversation(IReadOnlyList<ChatMessage> messages) =>
         string.Join(

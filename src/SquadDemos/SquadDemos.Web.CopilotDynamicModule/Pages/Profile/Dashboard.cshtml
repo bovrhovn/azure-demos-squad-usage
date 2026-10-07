@@ -10,11 +10,11 @@
             <h1>Dynamic dashboard</h1>
         </div>
         <div class="dashboard-actions">
-            <input ref="moduleFile" type="file" accept=".dll" class="visually-hidden" @@change="uploadModule">
-            <button type="button" @@click="$refs.moduleFile.click()" :disabled="isLoading || isUploading">
+            <input ref="moduleFile" type="file" accept=".dll" class="visually-hidden" v-on:change="uploadModule">
+            <button type="button" v-on:click="$refs.moduleFile.click()" :disabled="isLoading || isUploading">
                 {{ isUploading ? 'Uploading...' : 'Upload module' }}
             </button>
-            <button type="button" @@click="loadDashboard(true)" :disabled="isLoading || isUploading">
+            <button type="button" v-on:click="loadDashboard(true)" :disabled="isLoading || isUploading">
                 {{ isLoading ? 'Loading...' : 'Refresh' }}
             </button>
         </div>
@@ -26,7 +26,7 @@
             <p class="eyebrow">COPILOT MODULE CREATOR</p>
             <h2 id="module-creator-heading">Create a dashboard module</h2>
         </div>
-        <form @@submit.prevent="createModule">
+        <form v-on:submit.prevent="createModule">
             <label for="module-request">Describe the module to create</label>
             <div class="module-creator-controls">
                 <input id="module-request" v-model="moduleRequest" :disabled="isCreating" required
@@ -87,17 +87,17 @@
         <ul v-else class="module-file-list">
             <li v-for="moduleFile in moduleFiles" :key="moduleFile">
                 <span>{{ moduleFile }}</span>
-                <button type="button" class="delete-module" @@click="openDeleteDialog(moduleFile)">Delete</button>
+                <button type="button" class="delete-module" v-on:click="openDeleteDialog(moduleFile)">Delete</button>
             </li>
         </ul>
     </section>
-    <dialog ref="deleteDialog" class="delete-dialog" @@close="modulePendingDeletion = ''">
+    <dialog ref="deleteDialog" class="delete-dialog" v-on:close="modulePendingDeletion = ''">
         <form method="dialog">
             <h2>Delete module?</h2>
             <p>Delete <strong>{{ modulePendingDeletion }}</strong> from the deployed module folder? This cannot be undone.</p>
             <div class="dialog-actions">
                 <button value="cancel">Cancel</button>
-                <button class="delete-module" value="confirm" @@click.prevent="deleteModule" :disabled="isDeleting">
+                <button class="delete-module" value="confirm" v-on:click.prevent="deleteModule" :disabled="isDeleting">
                     {{ isDeleting ? 'Deleting...' : 'Delete module' }}
                 </button>
             </div>

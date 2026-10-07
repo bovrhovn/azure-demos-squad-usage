@@ -2,20 +2,28 @@ namespace SquadDemos.Web.CopilotDynamicModule.Features.Chat;
 
 public sealed record ChatTokenUsage(long? InputTokens, long? OutputTokens, long? ReasoningTokens);
 
-public sealed record CopilotChatResponse(string Content, ChatTokenUsage? TokenUsage);
+public sealed record ChatSkill(string Name, string Url);
+
+public sealed record CopilotChatResponse(
+    string Content,
+    ChatTokenUsage? TokenUsage,
+    IReadOnlyList<ChatSkill>? Skills = null);
 
 public sealed record ChatMessage(
     Guid Id,
     string Role,
     string Content,
     DateTimeOffset CreatedAt,
-    ChatTokenUsage? TokenUsage = null);
+    ChatTokenUsage? TokenUsage = null,
+    IReadOnlyList<ChatSkill>? Skills = null);
 
 public sealed record ChatSession(Guid Id, string Title, DateTimeOffset UpdatedAt, IReadOnlyList<ChatMessage> Messages);
 
 public sealed record ChatSessionSummary(Guid Id, string Title, DateTimeOffset UpdatedAt);
 
 public sealed record SendChatMessageRequest(Guid? SessionId, string Message);
+
+public sealed record ChatMessageStatus(Guid SessionId, string Message);
 
 public interface ICopilotChatClient
 {
@@ -41,6 +49,11 @@ public interface IChatService
         SendChatMessageRequest request,
         string? model,
         CancellationToken cancellationToken);
+
+    Task<bool> DeleteSessionAsync(
+        string userId,
+        Guid sessionId,
+        CancellationToken cancellationToken);
 }
 
 public interface IChatSessionStore
@@ -57,5 +70,10 @@ public interface IChatSessionStore
     Task SaveSessionAsync(
         string userId,
         ChatSession session,
+        CancellationToken cancellationToken);
+
+    Task<bool> DeleteSessionAsync(
+        string userId,
+        Guid sessionId,
         CancellationToken cancellationToken);
 }

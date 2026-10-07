@@ -1,3 +1,5 @@
+using SquadDemos.Web.CopilotDynamicModule.Features.Copilot;
+
 namespace SquadDemos.Web.CopilotDynamicModule.Features.Chat;
 
 public sealed class ChatService(
@@ -45,7 +47,36 @@ public sealed class ChatService(
         }
 
         await chatSessionStore.SaveSessionAsync(userId, session, cancellationToken);
-        var response = await copilotChatClient.GetResponseAsync(session.Messages, model, cancellationToken);
+        await chatSessionNotifier.NotifyMessageStatusAsync(
+            userId,
+            new ChatMessageStatus(session.Id, "Message received."),
+            cancellationToken);
+        await chatSessionNotifier.NotifyMessageStatusAsync(
+            userId,
+            new ChatMessageStatus(session.Id, "Waiting for GitHub Copilot to respond..."),
+            cancellationToken);
+
+        CopilotChatResponse response;
+        try
+        {
+            response = await copilotChatClient.GetResponseAsync(session.Messages, model, cancellationToken);
+        }
+        catch (CopilotRequestException)
+        {
+            await chatSessionNotifier.NotifyMessageStatusAsync(
+                userId,
+                new ChatMessageStatus(session.Id, "GitHub Copilot could not complete the response."),
+                cancellationToken);
+            throw;
+        }
+        catch (InvalidOperationException)
+        {
+            await chatSessionNotifier.NotifyMessageStatusAsync(
+                userId,
+                new ChatMessageStatus(session.Id, "GitHub Copilot returned an unavailable response."),
+                cancellationToken);
+            throw;
+        }
 
         {
             var agentMessage = new ChatMessage(
@@ -53,7 +84,8 @@ public sealed class ChatService(
                 "assistant",
                 response.Content,
                 DateTimeOffset.UtcNow,
-                response.TokenUsage);
+                response.TokenUsage,
+                response.Skills);
             session = session with
             {
                 Messages = [.. session.Messages, agentMessage],
@@ -63,7 +95,25 @@ public sealed class ChatService(
 
         await chatSessionStore.SaveSessionAsync(userId, session, cancellationToken);
         await chatSessionNotifier.NotifySessionUpdatedAsync(session, cancellationToken);
+        await chatSessionNotifier.NotifyMessageStatusAsync(
+            userId,
+            new ChatMessageStatus(session.Id, "GitHub Copilot responded."),
+            cancellationToken);
         return session;
+    }
+
+    public async Task<bool> DeleteSessionAsync(
+        string userId,
+        Guid sessionId,
+        CancellationToken cancellationToken)
+    {
+        var deleted = await chatSessionStore.DeleteSessionAsync(userId, sessionId, cancellationToken);
+        if (deleted)
+        {
+            await chatSessionNotifier.NotifySessionDeletedAsync(userId, sessionId, cancellationToken);
+        }
+
+        return deleted;
     }
 
     private static ChatSession CreateSession(string question) =>
