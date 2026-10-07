@@ -28,3 +28,20 @@ publishing the image:
 ```powershell
 .\azure\build-acr.ps1 -AcrName bovrhovncr -ResourceGroup rg-containers -NoPush
 ```
+
+## Deploy to Azure Container Apps
+
+`deploy-containerapp.ps1` builds a new version through `build-acr.ps1`, assigns the Container App's
+managed identity the Cosmos DB data-contributor role, and supplies the account endpoint from an ACA
+secret. This preserves the account's disabled key authentication setting. It configures external HTTPS
+ingress on port 8080 and scales between one and two replicas. The script finishes only after the
+public `/health` endpoint reports success.
+
+```powershell
+.\azure\deploy-containerapp.ps1 -GitHubDeviceFlowClientId <github-oauth-app-client-id>
+```
+
+The defaults target `rg-containers`, `bovrhovncr`, `bovrhovncdb`, the existing
+`rg-containers-private-env` environment, and the `bovrhovn-gh-dynamic-module` app. Override these
+with the matching script parameters when deploying to another environment. The GitHub OAuth app
+client ID is required and becomes the `GitHubDeviceFlow__ClientId` Container App environment variable.

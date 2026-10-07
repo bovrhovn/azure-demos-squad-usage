@@ -1,0 +1,27 @@
+@model dynamic
+@{
+    var pageParameter = (string)ViewData["PageParameter"]!;
+    var searchTerm = (string?)ViewData["SearchTerm"];
+    var otherPage = (int)ViewData["OtherPage"]!;
+}
+
+@if (Model.TotalPages > 1)
+{
+    <nav class="pagination" aria-label="Skill pages">
+        @if (Model.HasPreviousPage)
+        {
+            <a asp-page="/Profile/SkillsUploader"
+               asp-route-searchTerm="@searchTerm"
+               asp-route-uploadedSkillsPage="@(pageParameter == "UploadedSkillsPage" ? Model.CurrentPage - 1 : otherPage)"
+               asp-route-awesomeCopilotSkillsPage="@(pageParameter == "AwesomeCopilotSkillsPage" ? Model.CurrentPage - 1 : otherPage)"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Previous</a>
+        }
+        <span>Page @Model.CurrentPage of @Model.TotalPages</span>
+        @if (Model.HasNextPage)
+        {
+            <a asp-page="/Profile/SkillsUploader"
+               asp-route-searchTerm="@searchTerm"
+               asp-route-uploadedSkillsPage="@(pageParameter == "UploadedSkillsPage" ? Model.CurrentPage + 1 : otherPage)"
+               asp-route-awesomeCopilotSkillsPage="@(pageParameter == "AwesomeCopilotSkillsPage" ? Model.CurrentPage + 1 : otherPage)">Next <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+        }
+    </nav>
+}

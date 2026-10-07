@@ -85,9 +85,33 @@ dotnet run --project src\SquadDemos\SquadDemos.SquadHello\SquadDemos.SquadHello.
 
 ### Copilot Dynamic Module web app
 
-The web app uses the GitHub Copilot SDK's GitHub authentication. On first visit, it redirects to the
-**Authenticate with GitHub** page, which opens GitHub's device sign-in flow. Complete that flow and return to
-the page to continue to chat. No Entra ID app registration or Foundry configuration is required.
+The web app uses a GitHub OAuth device flow and passes each browser session's GitHub token to the GitHub Copilot
+SDK. On first visit, it redirects to the **Authenticate with GitHub** page. Select **Authenticate with GitHub**,
+enter the displayed activation code on GitHub's device sign-in page, approve access, and then select
+**Continue to chat**. **Sign out** clears only the current browser's encrypted session; it does not alter the
+machine's GitHub CLI login.
+
+Create a GitHub OAuth app with device flow enabled, then configure its client ID through user secrets or an
+environment variable. Do not add a client secret to the application: the OAuth device flow needs only the public
+client ID.
+
+```powershell
+dotnet user-secrets set --project src\SquadDemos\SquadDemos.Web.CopilotDynamicModule\SquadDemos.Web.CopilotDynamicModule.csproj `
+  "GitHubDeviceFlow:ClientId" "<oauth-client-id>"
+```
+
+For environment-based configuration:
+
+```powershell
+$env:GitHubDeviceFlow__ClientId = '<oauth-client-id>'
+```
+
+The Skills page displays five items per section by default. Override the shared paging size for any paged web
+surface with `Paging__PageSize`:
+
+```powershell
+$env:Paging__PageSize = '10'
+```
 
 ```powershell
 dotnet run --project src\SquadDemos\SquadDemos.Web.CopilotDynamicModule\SquadDemos.Web.CopilotDynamicModule.csproj

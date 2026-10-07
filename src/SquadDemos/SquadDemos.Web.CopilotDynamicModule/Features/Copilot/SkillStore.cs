@@ -11,6 +11,12 @@ public interface ISkillStore
     IReadOnlyList<UploadedSkill> GetSkills();
 
     Task<UploadedSkill> SaveAsync(IFormFile skillFile, CancellationToken cancellationToken);
+
+    Task SaveAwesomeCopilotSkillsAsync(
+        IReadOnlyList<DownloadedAwesomeCopilotSkill> skills,
+        CancellationToken cancellationToken);
+
+    Task DeleteAsync(string skillName, CancellationToken cancellationToken);
 }
 
 public sealed class SkillStore : ISkillStore
@@ -62,6 +68,64 @@ public sealed class SkillStore : ISkillStore
         await using var destination = File.Create(destinationPath);
         await skillFile.CopyToAsync(destination, cancellationToken);
         return new UploadedSkill(skillName, destinationPath);
+    }
+
+    public async Task SaveAwesomeCopilotSkillsAsync(
+        IReadOnlyList<DownloadedAwesomeCopilotSkill> skills,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(skills);
+        foreach (var skill in skills)
+        {
+            ValidateSkillName(skill.Name);
+            foreach (var file in skill.Files)
+            {
+                if (file.Content.LongLength > maxFileSizeBytes)
+                {
+                    throw new ArgumentException(
+                        $"Skill files cannot exceed {maxFileSizeBytes} bytes.",
+                        nameof(skills));
+                }
+
+                var destinationPath = GetContainedSkillFilePath(skill.Name, file.RelativePath);
+                Directory.CreateDirectory(Path.GetDirectoryName(destinationPath)!);
+                await File.WriteAllBytesAsync(destinationPath, file.Content, cancellationToken);
+            }
+        }
+    }
+
+    public Task DeleteAsync(string skillName, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        ValidateSkillName(skillName);
+        var skillDirectory = Path.Combine(FolderPath, skillName);
+        if (Directory.Exists(skillDirectory))
+        {
+            Directory.Delete(skillDirectory, recursive: true);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private void ValidateSkillName(string skillName)
+    {
+        if (string.IsNullOrWhiteSpace(skillName)
+            || skillName.Any(character => !char.IsLetterOrDigit(character) && character is not '-' and not '_'))
+        {
+            throw new ArgumentException("Skill names may contain only letters, numbers, hyphens, or underscores.", nameof(skillName));
+        }
+    }
+
+    private string GetContainedSkillFilePath(string skillName, string relativePath)
+    {
+        var skillDirectory = Path.GetFullPath(Path.Combine(FolderPath, skillName));
+        var destinationPath = Path.GetFullPath(Path.Combine(skillDirectory, relativePath));
+        if (!destinationPath.StartsWith(skillDirectory + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException("Skill files must resolve beneath their skill directory.", nameof(relativePath));
+        }
+
+        return destinationPath;
     }
 
     private static string GetSkillsFolderPath(string webRootPath, string folderName)

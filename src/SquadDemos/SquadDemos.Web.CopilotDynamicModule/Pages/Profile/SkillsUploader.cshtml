@@ -1,0 +1,32 @@
+@page
+@{
+    ViewData["Title"] = "Skills library";
+}
+<section id="skills-uploader" class="settings-panel skills-panel" v-cloak>
+    <div class="skills-page-heading">
+        <div><p class="eyebrow">GITHUB COPILOT</p><h1>Skills library</h1></div>
+        <img class="skills-logo" src="~/images/Gh-Copilot-logo.png" alt="GitHub Copilot demo artwork">
+    </div>
+    <p v-if="status" class="skills-activity" role="status"><i class="fa-solid fa-circle-info"></i> {{ status }}</p>
+    <p v-if="error" class="error-message" role="alert">{{ error }}</p>
+    <section class="skill-management-section skills-local" aria-labelledby="available-skills-heading">
+        <div class="section-heading"><div><p class="eyebrow">LOCAL LIBRARY</p><h2 id="available-skills-heading"><i class="fa-solid fa-hard-drive"></i> Available skills</h2></div><span class="skill-count">{{ uploaded.totalCount }}</span></div>
+        <p v-if="uploaded.totalCount === 0" class="empty-skills-message">No skills are available yet. Upload a Markdown skill or discover one below.</p>
+        <ul v-else class="skill-list"><li v-for="skill in uploaded.items" :key="skill.name"><span>{{ skill.name }}</span><button class="delete-module" @@click="remove(skill.name)"><i class="fa-solid fa-trash-can"></i> Delete</button></li></ul>
+    </section>
+    <section class="skill-management-section skills-upload" aria-labelledby="upload-skills-heading">
+        <div class="section-heading"><div><p class="eyebrow">ADD TO LIBRARY</p><h2 id="upload-skills-heading"><i class="fa-solid fa-upload"></i> Upload a skill</h2></div></div>
+        <p>Choose a Markdown skill to add it to your local Copilot skills library.</p>
+        <form @@submit.prevent="upload"><label for="skill-file">Skill Markdown file</label><div class="skills-input-group"><input id="skill-file" ref="file" type="file" accept=".md,text/markdown" required><button :disabled="uploading"><i class="fa-solid fa-upload"></i> {{ uploading ? 'Uploading…' : 'Upload' }}</button></div></form>
+    </section>
+    <section class="skill-management-section skills-discovery" aria-labelledby="awesome-copilot-heading">
+        <div class="section-heading"><div><p class="eyebrow">COMMUNITY COLLECTION</p><h2 id="awesome-copilot-heading"><i class="fa-brands fa-github"></i> Find skills from Awesome Copilot</h2></div><span v-if="results" class="skill-count">{{ results.totalCount }}</span></div>
+        <form @@submit.prevent="search"><label for="skill-search">Skill name</label><div class="skills-input-group"><input id="skill-search" v-model.trim="term" type="search" required><button><i class="fa-solid fa-magnifying-glass"></i> Search</button></div></form>
+        <p v-if="results && results.totalCount === 0" class="empty-skills-message">No Awesome Copilot skills matched “{{ term }}”.</p>
+        <ul v-if="results?.totalCount" class="skill-list"><li v-for="skill in results.items" :key="skill.name"><span>{{ skill.name }}</span><div class="skill-actions"><button class="secondary-button" @@click="preview(skill.name)">Preview</button><button @@click="install(skill.name)">Download</button></div></li></ul>
+    </section>
+    <dialog ref="dialog" class="skill-preview-dialog"><div class="skill-preview-heading"><h2>{{ previewSkill?.name }}</h2><form method="dialog"><button class="secondary-button">Close</button></form></div><pre><code>{{ previewSkill?.markdown }}</code></pre></dialog>
+</section>
+@section Scripts {
+<script src="~/js/vue.global.prod.js"></script><script src="~/js/api-endpoints.js"></script><script src="~/js/skills-uploader.js"></script>
+}

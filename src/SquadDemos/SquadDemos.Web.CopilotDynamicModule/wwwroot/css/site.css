@@ -215,11 +215,185 @@ button, textarea { font: inherit; }
     color: #166534;
 }
 
+.skills-panel { max-width: 54rem; }
+.skills-introduction { color: var(--muted); font-size: 1.08rem; line-height: 1.6; }
+
+.skills-page-heading {
+    align-items: center;
+    display: flex;
+    gap: 1.5rem;
+    justify-content: space-between;
+}
+
+.skills-logo {
+    border-radius: .5rem;
+    box-shadow: 0 .5rem 1rem rgba(10, 44, 77, .16);
+    max-width: 7rem;
+}
+
+.skills-activity {
+    align-items: center;
+    background: #e6f4ff;
+    border-left: .3rem solid var(--blue-dark);
+    color: #0b3558;
+    display: flex;
+    gap: .65rem;
+    margin-block: 1.5rem 2rem;
+    padding: .85rem 1rem;
+}
+
+.skill-management-section {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    margin-top: 2rem;
+    padding: 1.5rem;
+}
+
+.skills-input-group {
+    display: flex;
+    min-width: 0;
+}
+
+.skills-input-group input {
+    border-right: 0;
+    flex: 1;
+    min-width: 0;
+}
+
+.skills-input-group button {
+    border-radius: 0;
+    white-space: nowrap;
+}
+
+.skills-input-group input:first-child { border-radius: 0; }
+
+.section-heading {
+    align-items: flex-start;
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+}
+
+.section-heading h2 { margin: .15rem 0 0; }
+.section-heading h2 i { color: var(--blue-dark); margin-right: .35rem; }
+.section-kicker { color: var(--blue-dark); font-size: .72rem; font-weight: 800; letter-spacing: .1em; margin: 0; }
+
+.skill-count {
+    background: var(--ink);
+    border-radius: 999px;
+    color: var(--paper);
+    font-size: .8rem;
+    font-weight: 800;
+    min-width: 2rem;
+    padding: .3rem .55rem;
+    text-align: center;
+}
+
+.empty-skills-message {
+    background: #f7f5ef;
+    border: 1px dashed var(--line-dark);
+    color: var(--muted);
+    line-height: 1.5;
+    margin-top: 1.25rem;
+    padding: 1rem;
+}
+
+.empty-skills-message i { color: var(--blue-dark); margin-right: .35rem; }
+
+.skill-list {
+    display: grid;
+    gap: .75rem;
+    list-style: none;
+    margin: 1rem 0 0;
+    padding: 0;
+}
+
+.skill-list li {
+    align-items: center;
+    background: #fff;
+    border: 1px solid var(--line);
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+    padding: .7rem .8rem;
+}
+
+.skill-list form { margin: 0; }
+.skill-list li > span i { color: var(--blue-dark); margin-right: .35rem; }
+
+.skill-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+}
+
+.pagination {
+    align-items: center;
+    display: flex;
+    font-size: .9rem;
+    gap: .75rem;
+    justify-content: flex-end;
+    margin-top: 1rem;
+}
+
+.pagination a {
+    color: var(--blue-dark);
+    font-weight: 800;
+    text-decoration: none;
+}
+
+.pagination a:hover, .pagination a:focus-visible { text-decoration: underline; }
+
+.skill-preview-dialog {
+    border: 1px solid var(--line-dark);
+    box-shadow: 0 1.5rem 3.5rem rgba(12, 37, 65, .35);
+    max-height: min(44rem, calc(100vh - 3rem));
+    padding: 0;
+    width: min(52rem, calc(100% - 2rem));
+}
+
+.skill-preview-dialog::backdrop { background: rgba(7, 26, 51, .65); }
+
+.skill-preview-heading {
+    align-items: center;
+    background: var(--ink);
+    color: var(--paper);
+    display: flex;
+    justify-content: space-between;
+    padding: 1rem 1.25rem;
+}
+
+.skill-preview-heading h2 { font-size: 1.1rem; margin: 0; }
+.skill-preview-heading form { margin: 0; }
+.skill-preview-heading .secondary-button { background: transparent; border: 1px solid currentColor; }
+.skill-preview-dialog pre { margin: 0; overflow: auto; padding: 1.25rem; }
+
+.nav-link-button {
+    appearance: none;
+    background: transparent;
+    border: 0;
+    color: inherit;
+    cursor: pointer;
+    font: inherit;
+    padding: 0;
+    text-decoration: underline;
+}
+
 .authentication-actions {
     display: flex;
     flex-wrap: wrap;
     gap: .75rem;
     margin-top: 1.5rem;
+}
+
+.authentication-actions form {
+    margin: 0;
+}
+
+.authentication-code {
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 1.35rem;
+    letter-spacing: 0.08em;
 }
 
 .secondary-button { background: var(--blue-dark); }
@@ -783,4 +957,6 @@ button, textarea { font: inherit; }
     .module-creator-controls { grid-template-columns: 1fr; }
     .module-statistics dl { grid-template-columns: 1fr; }
     .module-file-list li { align-items: flex-start; flex-direction: column; }
+    .skill-list li, .section-heading { align-items: flex-start; flex-direction: column; }
+    .pagination { justify-content: flex-start; }
 }

@@ -1,20 +1,9 @@
 @page
-@model SquadDemos.Web.CopilotDynamicModule.Pages.AuthenticateModel
-@{
-    ViewData["Title"] = "Authenticate with GitHub";
-}
-
-<section class="settings-panel">
-    <p class="eyebrow">GITHUB COPILOT</p>
-    <h1>Authenticate with GitHub</h1>
-    <p>Copilot uses your GitHub account to identify you and provide access to the configured models.</p>
-    <ol>
-        <li>Select <strong>Authenticate with GitHub</strong> to open GitHub's device sign-in page.</li>
-        <li>Sign in to GitHub and approve the GitHub Copilot request.</li>
-        <li>Return here and select <strong>Continue to chat</strong>.</li>
-    </ol>
-    <div class="authentication-actions">
-        <a class="button-link" href="@Model.AuthenticationUrl" target="_blank" rel="noreferrer">Authenticate with GitHub</a>
-        <a class="button-link secondary-button" asp-page="/Authenticate">Continue to chat</a>
-    </div>
+@{ ViewData["Title"] = "Authenticate with GitHub"; }
+<section id="authentication-app" class="settings-panel" v-cloak>
+    <p class="eyebrow">GITHUB COPILOT</p><h1>Authenticate with GitHub</h1>
+    <p v-if="error" class="error-message">{{ error }}</p>
+    <template v-if="authorization"><ol><li>Open GitHub's device sign-in page.</li><li>Enter the activation code and approve the request.</li><li>Return here and select Continue to chat.</li></ol><p class="authentication-code"><strong>{{ authorization.userCode }}</strong></p><p v-if="message" role="status">{{ message }}</p><div class="authentication-actions"><a class="button-link" :href="authorization.verificationUriComplete || authorization.verificationUri" target="_blank" rel="noreferrer">Open GitHub device sign-in</a><button class="secondary-button" @@click="complete">Continue to chat</button></div></template>
+    <template v-else><p>Select the button below to generate a device activation code.</p><button class="button-link" :disabled="loading" @@click="begin">Authenticate with GitHub</button></template>
 </section>
+@section Scripts { <script src="~/js/vue.global.prod.js"></script><script src="~/js/api-endpoints.js"></script><script src="~/js/authenticate.js"></script> }

@@ -11,6 +11,8 @@ public sealed class ChatStorageOptions
 
     public string ConnectionString { get; init; } = string.Empty;
 
+    public string AccountEndpoint { get; init; } = string.Empty;
+
     public string DatabaseName { get; init; } = string.Empty;
 
     public string ContainerName { get; init; } = string.Empty;
@@ -32,9 +34,7 @@ public sealed class CosmosChatStoreInitializer(
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        var database = (await cosmosClient.CreateDatabaseIfNotExistsAsync(
-            options.DatabaseName,
-            cancellationToken: cancellationToken)).Database;
+        var database = cosmosClient.GetDatabase(options.DatabaseName);
 
         await database.CreateContainerIfNotExistsAsync(
             new ContainerProperties(options.ContainerName, "/userId"),

@@ -1,6 +1,7 @@
+using Azure.Identity;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Options;
-using Microsoft.AspNetCore.Http.HttpResults;
 using SquadDemos.Web.CopilotDynamicModule.Features.Copilot;
 
 namespace SquadDemos.Web.CopilotDynamicModule.Features.Chat;
@@ -12,8 +13,10 @@ public static class ChatFeature
         services.AddOptions<ChatStorageOptions>()
             .Bind(configuration.GetSection(ChatStorageOptions.SectionName))
             .Validate(
-                options => !string.IsNullOrWhiteSpace(options.ConnectionString),
-                "Cosmos:ConnectionString must be configured.")
+                options =>
+                    !string.IsNullOrWhiteSpace(options.ConnectionString) ||
+                    Uri.TryCreate(options.AccountEndpoint, UriKind.Absolute, out _),
+                "Cosmos:ConnectionString or Cosmos:AccountEndpoint must be configured.")
             .Validate(
                 options => !string.IsNullOrWhiteSpace(options.DatabaseName),
                 "Cosmos:DatabaseName must be configured.")
@@ -24,7 +27,9 @@ public static class ChatFeature
         services.AddSingleton(provider =>
         {
             var options = provider.GetRequiredService<IOptions<ChatStorageOptions>>().Value;
-            return new CosmosClient(options.ConnectionString);
+            return !string.IsNullOrWhiteSpace(options.ConnectionString)
+                ? new CosmosClient(options.ConnectionString)
+                : new CosmosClient(options.AccountEndpoint, new DefaultAzureCredential());
         });
         services.AddSingleton<IChatSessionStore, CosmosChatSessionStore>();
         services.AddHostedService<CosmosChatStoreInitializer>();

@@ -7,6 +7,11 @@
         <img class="account-avatar" src="@Model.AvatarUrl" alt="@Model.Login's GitHub avatar" width="32" height="32" />
     </li>
     <li class="account-name">@Model.Login</li>
+    <li>
+        <form method="post" action="/api/copilot/sign-out">
+            <button class="nav-link-button" type="submit">Sign out</button>
+        </form>
+    </li>
 }
 else
 {

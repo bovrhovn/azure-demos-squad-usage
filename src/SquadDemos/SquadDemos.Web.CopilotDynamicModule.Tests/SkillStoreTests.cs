@@ -38,6 +38,44 @@ public sealed class SkillStoreTests : IDisposable
         await Assert.ThrowsAsync<ArgumentException>(() => store.SaveAsync(file, CancellationToken.None));
     }
 
+    [Fact]
+    public async Task SaveAwesomeCopilotSkillsAsync_stores_downloaded_files_and_DeleteAsync_removes_them()
+    {
+        Directory.CreateDirectory(webRootPath);
+        var store = CreateStore();
+        var skill = new DownloadedAwesomeCopilotSkill(
+            "review-code",
+            [
+                new RemoteSkillFile("SKILL.md", "Review pull requests."u8.ToArray()),
+                new RemoteSkillFile("references/checklist.md", "Check validation."u8.ToArray())
+            ]);
+
+        await store.SaveAwesomeCopilotSkillsAsync([skill], CancellationToken.None);
+
+        Assert.Equal(
+            "Check validation.",
+            await File.ReadAllTextAsync(Path.Combine(webRootPath, "skills", "review-code", "references", "checklist.md")));
+        Assert.Collection(store.GetSkills(), savedSkill => Assert.Equal("review-code", savedSkill.Name));
+
+        await store.DeleteAsync("review-code", CancellationToken.None);
+
+        Assert.Empty(store.GetSkills());
+        Assert.False(Directory.Exists(Path.Combine(webRootPath, "skills", "review-code")));
+    }
+
+    [Fact]
+    public async Task SaveAwesomeCopilotSkillsAsync_rejects_a_path_outside_the_skill_directory()
+    {
+        Directory.CreateDirectory(webRootPath);
+        var store = CreateStore();
+        var skill = new DownloadedAwesomeCopilotSkill(
+            "review-code",
+            [new RemoteSkillFile("../outside.md", "content"u8.ToArray())]);
+
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            store.SaveAwesomeCopilotSkillsAsync([skill], CancellationToken.None));
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(webRootPath))
