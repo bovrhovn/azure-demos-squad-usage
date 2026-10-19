@@ -21,14 +21,14 @@ The solution contains two console applications and an authenticated Razor web ap
 | --- | --- |
 | [`SquadDemos.GHCopilot`](src/SquadDemos/SquadDemos.GHCopilot) | Creating a streaming `CopilotClient` session, handling assistant-message events, and obtaining the completed response. |
 | [`SquadDemos.SquadHello`](src/SquadDemos/SquadDemos.SquadHello) | Hosting a `SquadAgent` with the .NET Generic Host, resolving it from dependency injection, and running a session against a Squad folder. |
-| [`SquadDemos.Web.CopilotDynamicModule`](src/SquadDemos/SquadDemos.Web.CopilotDynamicModule) | A GitHub-authenticated Razor Pages app with persistent Cosmos DB chat sessions and an ordered dynamic dashboard-module pipeline. |
+| [`SquadDemos.Web.CopilotDynamicModule`](src/SquadDemos/SquadDemos.Web.CopilotDynamicModule) | A GitHub-authenticated Razor Pages app with persistent Azure Cosmos DB chat, selectable Copilot models, skill management, and an ordered dynamic dashboard-module pipeline. |
 
 ## Prerequisites
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
 - GitHub Copilot access for the GitHub Copilot SDK demo
 - A Squad-configured folder for the Squad demo
-- GitHub Copilot access for the web demo
+- GitHub Copilot access, a GitHub OAuth app configured for device flow, and Azure Cosmos DB access for the web demo
 
 ## Build
 
@@ -51,6 +51,8 @@ Run just the web application's xUnit tests while working on chat storage or dyna
 ```powershell
 dotnet test src\SquadDemos\SquadDemos.Web.CopilotDynamicModule.Tests\SquadDemos.Web.CopilotDynamicModule.Tests.csproj
 ```
+
+The solution also contains focused test projects for both console demos.
 
 ## Run the demos
 
@@ -106,6 +108,31 @@ For environment-based configuration:
 $env:GitHubDeviceFlow__ClientId = '<oauth-client-id>'
 ```
 
+Configure Cosmos DB before starting the app. It accepts either a connection string or an account endpoint that
+uses `DefaultAzureCredential`. Create the database first, then set the database and container names with the
+same configuration mechanism.
+
+```powershell
+dotnet user-secrets set --project src\SquadDemos\SquadDemos.Web.CopilotDynamicModule\SquadDemos.Web.CopilotDynamicModule.csproj `
+  "Cosmos:ConnectionString" "<connection-string>"
+dotnet user-secrets set --project src\SquadDemos\SquadDemos.Web.CopilotDynamicModule\SquadDemos.Web.CopilotDynamicModule.csproj `
+  "Cosmos:DatabaseName" "DynamicModuleDb"
+dotnet user-secrets set --project src\SquadDemos\SquadDemos.Web.CopilotDynamicModule\SquadDemos.Web.CopilotDynamicModule.csproj `
+  "Cosmos:ContainerName" "ChatSessions"
+```
+
+Use the connection string supplied by your Azure Cosmos DB account or local emulator. A connection string whose
+endpoint is `https://localhost:8081/` is labelled **LOCAL** in the page footer; all other endpoints are labelled
+**PRODUCTION**.
+
+For Azure identity-based authentication, set `Cosmos:AccountEndpoint` instead of `Cosmos:ConnectionString`:
+
+```powershell
+$env:Cosmos__AccountEndpoint = 'https://<account>.documents.azure.com:443/'
+$env:Cosmos__DatabaseName = 'DynamicModuleDb'
+$env:Cosmos__ContainerName = 'ChatSessions'
+```
+
 The Skills page displays five items per section by default. Override the shared paging size for any paged web
 surface with `Paging__PageSize`:
 
@@ -118,38 +145,19 @@ dotnet run --project src\SquadDemos\SquadDemos.Web.CopilotDynamicModule\SquadDem
 ```
 
 The chat page persists the signed-in user's sessions in Cosmos DB and sends messages through minimal APIs to
-GitHub Copilot. The **Dashboard** link executes registered `ICopilotModule` instances in ascending `Order`; each
-module receives dashboard configuration through `SetConfiguration` and returns model-generated HTML. That HTML
-is shown in a sandboxed iframe so it cannot execute in the application origin.
+GitHub Copilot. It streams message-status updates over SignalR, lets users delete individual sessions, and
+partitions stored sessions by authenticated GitHub login (`/userId`). At startup, the app creates the configured
+container when it does not already exist. The selected Copilot model is stored in the browser's HTTP-only
+`copilot-default-model` cookie.
 
-### Configure Cosmos DB chat storage
+The **Skills** page supports uploading a Markdown skill or finding, previewing, and installing skills from
+[Awesome Copilot](https://github.com/github/awesome-copilot). Installed skills include their referenced
+dependencies and are provided to Copilot for chat requests. Skills are stored in the configured
+`wwwroot\skills` folder by default.
 
-The web app requires a Cosmos DB connection before it starts. Configure the `Cosmos:ConnectionString`,
-`Cosmos:DatabaseName`, and `Cosmos:ContainerName` values through user secrets or environment variables; do not
-place connection strings in `appsettings.json`.
-
-```powershell
-dotnet user-secrets set --project src\SquadDemos\SquadDemos.Web.CopilotDynamicModule\SquadDemos.Web.CopilotDynamicModule.csproj `
-  "Cosmos:ConnectionString" "<connection-string>"
-dotnet user-secrets set --project src\SquadDemos\SquadDemos.Web.CopilotDynamicModule\SquadDemos.Web.CopilotDynamicModule.csproj `
-  "Cosmos:DatabaseName" "DynamicModuleDb"
-dotnet user-secrets set --project src\SquadDemos\SquadDemos.Web.CopilotDynamicModule\SquadDemos.Web.CopilotDynamicModule.csproj `
-  "Cosmos:ContainerName" "ChatSessions"
-```
-
-Use the connection string supplied by your Azure Cosmos DB account or local emulator. At startup, the app creates
-the configured database and container when they do not already exist. Chat sessions are partitioned by the
-authenticated GitHub login (`/userId`), so each user can retrieve only their own sessions. A connection string
-whose endpoint is `https://localhost:8081/` is labelled **LOCAL** in the page footer; all other endpoints are
-labelled **PRODUCTION**.
-
-For environment-based configuration, use double underscores in the setting names:
-
-```powershell
-$env:Cosmos__ConnectionString = '<connection-string>'
-$env:Cosmos__DatabaseName = 'DynamicModuleDb'
-$env:Cosmos__ContainerName = 'ChatSessions'
-```
+The **Dashboard** link executes registered `ICopilotModule` instances in ascending `Order`; each module receives
+dashboard configuration through `SetConfiguration` and returns model-generated HTML. That HTML is shown in a
+sandboxed iframe so it cannot execute in the application origin.
 
 #### Dynamic dashboard modules
 
@@ -172,10 +180,11 @@ instance for every dashboard request so a module's mutable configuration is neve
 - Configure the DLL and generated-source folders with `Modules:FolderName` and `Modules:SourceFolderName`;
   their defaults are `modules` and `modules-code`, relative to the web root.
 
-Assemblies and generated source under `wwwroot` are publicly served. Module assemblies also execute with the
-application's identity when loaded. Review generated source and deploy only trusted assemblies through the
-deployment pipeline. The [`wwwroot\modules`](src/SquadDemos/SquadDemos.Web.CopilotDynamicModule/wwwroot/modules)
-folder contains the deployment guidance.
+Assemblies, generated source, and skills under `wwwroot` are publicly served. Module assemblies execute with the
+application's identity when loaded, and skill Markdown can affect Copilot responses. Review generated source,
+uploaded skills, and deploy only trusted assemblies through the deployment pipeline. The
+[`wwwroot\modules`](src/SquadDemos/SquadDemos.Web.CopilotDynamicModule/wwwroot/modules) folder contains the
+deployment guidance.
 
 ## Technology references
 
