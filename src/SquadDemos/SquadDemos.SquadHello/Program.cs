@@ -3,6 +3,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Spectre.Console;
 using Squad.Agents.AI;
+using SquadDemos.SquadHello;
 
 AnsiConsole.MarkupLine("[green]Hello, Squad![/]");
 
@@ -23,7 +24,7 @@ using var app1 = builder.Build();
 var agent1 = app1.Services.GetRequiredService<SquadAgent>();
 
 AnsiConsole.WriteLine($"Agent name : {agent1.Name}");
-AnsiConsole.MarkupLine("[grey]Sending [/]: What is 2 + 2?");
+AnsiConsole.MarkupLine("[grey]Sending [/]: Summarize the team");
 
 var session1 = await agent1.CreateSessionAsync();
 var result1 = await agent1.RunAsync(

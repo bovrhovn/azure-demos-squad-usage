@@ -1,55 +1,64 @@
-# Azure Demos: Squad and GitHub Copilot SDK
+# Copilot Coding Agent — Squad Instructions
 
-## Build, test, and run
+You are working on a project that uses **Squad**, an AI team framework. When picking up issues autonomously, follow these guidelines.
 
-- Build the complete .NET 10 solution:
-  ```powershell
-  dotnet build src\SquadDemos\SquadDemos.slnx
+## Coordinator Canary Check
+
+**IMPORTANT — run this check on EVERY session start, before doing any work:**
+
+Inspect your `agent_instructions` for the coordinator canaries. This is a **two-state payload-integrity check within a known Squad coordinator session**; it verifies whether the coordinator payload loaded fully or was visibly truncated. It is **not** proof that an agent with no canaries is safely non-Squad — wholly absent payloads and proven non-Squad agents require a host-level identity beacon before custom-agent instruction ingestion.
+
+1. If the HEAD canary `SQUAD_COORDINATOR_CANARY_HEAD_b7d2` is **absent**, the Squad coordinator payload is not observable from inside this prompt. Treat non-Squad discrimination as an **OPEN host-level concern**; do not claim this check proved the current agent is non-Squad.
+2. If the HEAD canary `SQUAD_COORDINATOR_CANARY_HEAD_b7d2` is **present** and the EOF canary `SQUAD_COORDINATOR_CANARY_a8f3` is **present**, the coordinator prompt loaded fully. Proceed with normal Squad behavior.
+3. If the HEAD canary `SQUAD_COORDINATOR_CANARY_HEAD_b7d2` is **present** but the EOF canary `SQUAD_COORDINATOR_CANARY_a8f3` is **absent**, the coordinator prompt loaded but was **truncated** before the end.
+
+**When the coordinator prompt is truncated, you MUST:**
+1. **STOP** — do not proceed with standard Squad behavior.
+2. **WARN the user** with this exact message:
+   ```
+   ⚠️ Squad coordinator (squad.agent.md) loaded but appears to be truncated before the EOF canary. Do NOT proceed with standard Squad behavior — Squad's safety rails are incomplete. Please restart your session.
+   ```
+3. Do not continue with normal Squad routing, spawning, PR, or branch-protection behavior after emitting the warning.
+
+## Team Context
+
+Before starting work on any issue:
+
+1. Read `.squad/team.md` for the team roster, member roles, and your capability profile.
+2. Read `.squad/routing.md` for work routing rules.
+3. If the issue has a `squad:{member}` label, read that member's charter at `.squad/agents/{member}/charter.md` to understand their domain expertise and coding style — work in their voice.
+
+## Capability Self-Check
+
+Before starting work, check your capability profile in `.squad/team.md` under the **Coding Agent → Capabilities** section.
+
+- **🟢 Good fit** — proceed autonomously.
+- **🟡 Needs review** — proceed, but note in the PR description that a squad member should review.
+- **🔴 Not suitable** — do NOT start work. Instead, comment on the issue:
   ```
-- Run all tests:
-  ```powershell
-  dotnet test src\SquadDemos\SquadDemos.slnx
-  ```
-- Run one xUnit test by fully qualified name:
-  ```powershell
-  dotnet test src\SquadDemos\SquadDemos.Web.CopilotDynamicModule.Tests\SquadDemos.Web.CopilotDynamicModule.Tests.csproj --filter "FullyQualifiedName~ChatAndModuleTests.SendMessageAsync_creates_a_session_and_keeps_conversation_history"
-  ```
-- No standalone lint or formatting command is configured.
-- Run the GitHub Copilot SDK demo:
-  ```powershell
-  dotnet run --project src\SquadDemos\SquadDemos.GHCopilot\SquadDemos.GHCopilot.csproj
-  ```
-- Run the Squad SDK demo. `PROJECTDIR` must identify the folder that contains the Squad configuration/state the agent should use:
-  ```powershell
-  $env:PROJECTDIR = 'C:\path\to\squad-folder'
-  dotnet run --project src\SquadDemos\SquadDemos.SquadHello\SquadDemos.SquadHello.csproj
-  ```
-- Run the web demo and complete the GitHub device-authentication flow when prompted:
-  ```powershell
-  dotnet run --project src\SquadDemos\SquadDemos.Web.CopilotDynamicModule\SquadDemos.Web.CopilotDynamicModule.csproj
+  🤖 This issue doesn't match my capability profile (reason: {why}). Suggesting reassignment to a squad member.
   ```
 
-## Architecture
+## Branch Naming
 
-The solution at `src\SquadDemos\SquadDemos.slnx` contains three independent .NET 10 samples and one xUnit test project:
+Use the squad branch convention:
+```
+squad/{issue-number}-{kebab-case-slug}
+```
+Example: `squad/42-fix-login-validation`
 
-- `SquadDemos.GHCopilot` directly uses `GitHub.Copilot.SDK`. It creates a streaming `CopilotClient` session, approves permission requests through `PermissionHandler.ApproveAll`, prints assistant-message events, then displays the result returned by `SendAndWaitAsync`.
-- `SquadDemos.SquadHello` hosts a `SquadAgent` through `Microsoft.Extensions.Hosting` and `AddSquadAgent`. It obtains the Squad folder from the required `PROJECTDIR` environment variable, creates a session, and sends a fixed prompt through the agent. The project is explicitly configured for the `win-x64` runtime.
-- `SquadDemos.Web.CopilotDynamicModule` is a Razor Pages host with independently registered `Copilot`, `Chat`, and `Dashboard` features. Razor Pages provide the UI; each feature maps its own minimal API endpoints from `Program.cs`.
-- The web app's `GitHubCopilotService` owns all Copilot SDK client/session creation. Chat sessions are in-memory and partitioned by the authenticated GitHub login. The selected model is kept in the `copilot-default-model` HTTP-only cookie.
-- Dashboard modules implement `ICopilotModule`. `CopilotModuleLoader` discovers public implementations from DLLs in the configured `wwwroot\modules` folder, caches their types, and creates new instances for every request. Modules run in ascending `Order`; their generated HTML is displayed through sandboxed iframes.
-- Uploaded skill Markdown is stored as `wwwroot\<configured-skills-folder>\<skill-name>\SKILL.md`, then supplied to Copilot as its working directory and skill directory.
+## PR Guidelines
 
-## Repository conventions
+When opening a PR:
+- Reference the issue: `Closes #{issue-number}`
+- If the issue had a `squad:{member}` label, mention the member: `Working as {member} ({role})`
+- If this is a 🟡 needs-review task, add to the PR description: `⚠️ This task was flagged as "needs review" — please have a squad member review before merging.`
+- Follow any project conventions in `.squad/decisions.md`
 
-- Keep these as focused, runnable SDK samples rather than adding application layers or shared abstractions without a demo need.
-- Use `Spectre.Console` for user-facing interactive prompts and formatted output, matching the existing console color/markup style.
-- Treat `PROJECTDIR` as required input for the Squad demo. Fail immediately when it is absent rather than introducing a fallback location.
-- Preserve the current Copilot session lifecycle: configure event handlers for streamed messages, retain the disposable subscription, and dispose it after `SendAndWaitAsync`.
-- Keep web feature registration and endpoint mapping together in the corresponding `Add*Feature` and `Map*FeatureApi` extension methods. Add feature-facing contracts next to their feature service.
-- Validate configuration when registering web feature options with `ValidateOnStart`; do not embed credentials or model choices in source. The web demo expects values from configuration, user secrets, or environment variables.
-- Preserve the Copilot error boundary: translate `CopilotRequestException` to the API's existing 502 response and configuration/empty-response `InvalidOperationException` to 503 rather than swallowing failures.
-- For dashboard plugins, cache module *types* rather than module instances. Plugin instances can retain per-request configuration and must not be shared across users; keep the collectible load-context cleanup coupled to cache eviction.
-- Retain the path-containment checks in `SkillStore` and `CopilotModuleLoader`: configured skills and modules folders must resolve underneath `wwwroot`.
-- Keep uploaded skills and deployable dashboard assemblies reviewed. Assemblies under `wwwroot` are publicly served and execute with the application identity when loaded.
-- Runtime Squad state under `.squad/` is local and ignored; do not add generated logs, sessions, caches, or decision inbox content to source control.
+## Decisions
+
+If you make a decision that affects other team members, write it to:
+```
+.squad/decisions/inbox/copilot-{brief-slug}.md
+```
+The Scribe will merge it into the shared decisions file.
