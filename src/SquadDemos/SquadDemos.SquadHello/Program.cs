@@ -13,15 +13,11 @@ AnsiConsole.MarkupLine("[grey] Squad folder path is [/] " + squadFolderPath);
 
 var builder = Host.CreateApplicationBuilder(args);
 builder.Logging.SetMinimumLevel(LogLevel.Warning); // keep sample output clean
-builder.Services.AddSquadAgent(o =>
-{
-    o.SquadFolderPath = squadFolderPath;
-    o.AgentName = "SampleSquad";
-    o.Instructions = "You are a helpful assistant. Respond concisely.";
-});
+builder.Services.AddSquadDemo(squadFolderPath);
 
 using var app1 = builder.Build();
-var agent1 = app1.Services.GetRequiredService<SquadAgent>();
+await using var scope = app1.Services.CreateAsyncScope();
+var agent1 = scope.ServiceProvider.GetRequiredService<SquadAgent>();
 
 AnsiConsole.WriteLine($"Agent name : {agent1.Name}");
 AnsiConsole.MarkupLine("[grey]Sending [/]: Summarize the team");

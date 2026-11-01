@@ -1,0 +1,24 @@
+{
+  "universe_usage_history": [
+    {
+      "universe": "descriptive",
+      "assignment_id": "team-init-20261019T121423642Z",
+      "used_at": "2026-10-19T12:14:23.642Z"
+    }
+  ],
+  "assignment_cast_snapshots": {
+    "team-init-20261019T121423642Z": {
+      "universe": "descriptive",
+      "agents": {
+        "lead": "Lead",
+        "backend": "Backend",
+        "frontend": "Frontend",
+        "infra": "Infra",
+        "tester": "Tester"
+      },
+      "created_at": "2026-10-19T12:14:23.642Z"
+    }
+  },
+  "transaction_id": "6cbf406a-cb51-46b5-a174-4bde2de4cd64",
+  "registry_revision": 2
+}

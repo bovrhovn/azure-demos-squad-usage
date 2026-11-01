@@ -80,9 +80,23 @@ dotnet run --project src\SquadDemos\SquadDemos.GHCopilot\SquadDemos.GHCopilot.cs
 
 Set `PROJECTDIR` to the root of the Squad folder to use. The demo passes that path to `AddSquadAgent`, creates a session, and sends a simple prompt.
 
+Install the **full GitHub Copilot CLI** and sign in before running this demo (`copilot --version` should succeed). The demo resolves `copilot.exe` (Windows) or `copilot` from `PATH`. To select another installation, set `COPILOT_CLI_PATH` to an absolute executable path; on Windows an npm CLI's `.js` entry point is also supported (requires Node.js), but `.cmd`/`.ps1` shims are not.
+
+Squad 1.0.0 adds `--allow-all` and, when `.github/agents/squad.agent.md` exists, `--agent squad`. SDK 1.0.14's bundled **copilot-runtime** does not support those full-CLI flags, so this demo explicitly selects the installed CLI instead. Squad's existing automatic tool/path/URL approval and coordinator/team discovery remain unchanged: run only against a trusted Squad folder.
+
+Build and run on the target host without overriding `RuntimeIdentifier`: the bundled Copilot runtime defaults to the build host's RID, and the SDK resolves it using the operating system's architecture. For example, Windows ARM64 needs the `win-arm64` bundle, not `win-x64`.
+
 ```powershell
 $env:PROJECTDIR = 'C:\path\to\squad-folder'
 dotnet run --project src\SquadDemos\SquadDemos.SquadHello\SquadDemos.SquadHello.csproj
+```
+
+To verify CLI startup, real session creation, and on-disk coordinator selection without sending a prompt:
+
+```powershell
+$env:SQUADHELLO_INTEGRATION_ROOT = $env:PROJECTDIR
+dotnet test src\SquadDemos\SquadDemos.SquadHello.Tests --filter FullyQualifiedName~SquadRuntimeConfigurationTests
+Remove-Item Env:SQUADHELLO_INTEGRATION_ROOT
 ```
 
 ### Copilot Dynamic Module web app
